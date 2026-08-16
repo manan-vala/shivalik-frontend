@@ -1,12 +1,11 @@
-import './App.css'
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./lib/auth.jsx";
+import router from "./routes/index.jsx";
 
-function App() {
-
+export default function App() {
   return (
-    <>
-      Shivalik Frontend
-    </>
-  )
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
-
-export default App
