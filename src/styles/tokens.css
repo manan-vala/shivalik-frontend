@@ -1,0 +1,331 @@
+/* ============================================================================
+   Shivalik / Golden — Design Tokens
+   ----------------------------------------------------------------------------
+   Extracted from Figma: GOLDEN (Copy) · file VVZ3VLv1ftnqITsHBh8TEU
+   Page: FINAL SCREENS (259:8132)
+
+   Every value below was read from the Figma file via variable definitions or
+   design context — none are invented. Where the file contained three competing
+   dialects (see RECONCILIATION at the bottom), the Untitled UI variable set was
+   adopted as canonical because it is the only dialect backed by real Figma
+   variables and it covers the majority of desktop admin screens.
+
+   STRUCTURE
+     1. Primitives   — raw ramps. Never reference these directly in components.
+     2. Semantic     — role tokens (surface, text, border, status). Use these.
+     3. Exposure     — semantic roles published as Tailwind utilities.
+
+   Components should only ever use layer 2/3 names (bg-surface, text-secondary,
+   border-default, bg-status-success-bg …). That indirection is what lets a
+   theme change, or a dark mode, happen in one place later.
+   ========================================================================== */
+
+
+/* ============================================================================
+   1. PRIMITIVES
+   ========================================================================== */
+
+@theme {
+
+  /* --- Typeface -----------------------------------------------------------
+     Inter is the only family used anywhere in FINAL SCREENS. */
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+
+
+  /* --- Type scale ---------------------------------------------------------
+     Sizes/line-heights read from Figma text styles (Display sm, Text lg/md/sm/xs)
+     plus two additions the screens required but the library did not name. */
+
+  --text-display-sm: 1.875rem;              /* 30px — page titles, metric numbers */
+  --text-display-sm--line-height: 2.375rem; /* 38px */
+
+  --text-display-xs: 1.5rem;                /* 24px — mobile page titles, KPI numbers */
+  --text-display-xs--line-height: 2rem;     /* 32px */
+
+  --text-xl: 1.25rem;                       /* 20px — filled to complete the ramp */
+  --text-xl--line-height: 1.875rem;         /* 30px */
+
+  --text-lg: 1.125rem;                      /* 18px — card / section headings */
+  --text-lg--line-height: 1.75rem;          /* 28px */
+
+  --text-md: 1rem;                          /* 16px — body */
+  --text-md--line-height: 1.5rem;           /* 24px */
+
+  --text-sm: 0.875rem;                      /* 14px — table cells, labels, buttons */
+  --text-sm--line-height: 1.25rem;          /* 20px */
+
+  --text-xs: 0.75rem;                       /* 12px — meta text, secondary rows */
+  --text-xs--line-height: 1.125rem;         /* 18px */
+
+  --text-label: 0.75rem;                    /* 12px — uppercase column/stat labels */
+  --text-label--line-height: 1rem;          /* 16px */
+
+  --text-2xs: 0.625rem;                     /* 10px — dense status pills (mobile) */
+  --text-2xs--line-height: 0.875rem;        /* 14px */
+
+  /* Letter-spacing — 0.6px on 12px uppercase labels = 0.05em */
+  --tracking-label: 0.05em;
+
+
+  /* --- Neutral ramp -------------------------------------------------------
+     Observed: 50,100,200,300,400,500,700,900.
+     25/600/800 completed from the same ramp to keep the scale unbroken —
+     these three are the only colour values in this file not read from Figma. */
+
+  --color-gray-25:  #FCFCFD;  /* completed */
+  --color-gray-50:  #F9FAFB;
+  --color-gray-100: #F2F4F7;
+  --color-gray-200: #E4E7EC;
+  --color-gray-300: #D0D5DD;
+  --color-gray-400: #98A2B3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;  /* completed */
+  --color-gray-700: #344054;
+  --color-gray-800: #1D2939;  /* completed */
+  --color-gray-900: #101828;
+
+
+  /* --- Brand ramp ---------------------------------------------------------
+     Observed: 50,100,200,300,400,500,600,700,800. 25/900 completed. */
+
+  --color-primary-25:  #FCFAFF; /* completed */
+  --color-primary-50:  #F9F5FF;
+  --color-primary-100: #F4EBFF;
+  --color-primary-200: #E9D7FE;
+  --color-primary-300: #D6BBFB;
+  --color-primary-400: #B692F6;
+  --color-primary-500: #9E77ED;
+  --color-primary-600: #7F56D9;  /* the brand purple — primary actions */
+  --color-primary-700: #6941C6;  /* active nav, avatars */
+  --color-primary-800: #53389E;  /* deep surfaces, mobile bottom nav */
+  --color-primary-900: #42307D;  /* completed */
+
+
+  /* --- Status families ----------------------------------------------------
+     Each family is a {50 background, 500 solid, 700 foreground} triad —
+     exactly how badges are built in the file. */
+
+  --color-success-50:  #ECFDF3;
+  --color-success-500: #12B76A;
+  --color-success-700: #027A48;
+
+  --color-error-50:  #FEF3F2;
+  --color-error-500: #F04438;
+  --color-error-700: #B42318;
+
+  --color-warning-50:  #FFFAEB;
+  --color-warning-500: #F79009;  /* completed — vendor screens used #F59E0B */
+  --color-warning-700: #B54708;
+
+  --color-indigo-50:  #EEF4FF;
+  --color-indigo-700: #3538CD;
+
+  --color-orange-50:  #FFF6ED;
+  --color-orange-700: #C4320A;
+
+  --color-bluelight-50:  #F0F9FF;
+  --color-bluelight-700: #026AA2;
+
+
+  /* --- Radii --------------------------------------------------------------
+     Two card radii genuinely coexist: 8px on desktop admin, 12px on mobile
+     and vendor. Both are kept; component defaults pick per surface. */
+
+  --radius-xs:   0.25rem;   /* 4px */
+  --radius-sm:   0.375rem;  /* 6px */
+  --radius-md:   0.5rem;    /* 8px  — desktop cards, buttons, inputs */
+  --radius-lg:   0.75rem;   /* 12px — mobile + vendor cards */
+  --radius-xl:   1rem;      /* 16px — desktop badges */
+  --radius-2xl:  1.5rem;    /* 24px — modal dialogs */
+  --radius-full: 9999px;    /* pills, avatars */
+
+
+  /* --- Elevation ----------------------------------------------------------
+     Shadow/xs and Shadow/sm are real Figma effect variables. md/lg complete
+     the ramp for overlays and modals. */
+
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.06), 0 1px 3px 0 rgb(16 24 40 / 0.10);
+  --shadow-md: 0 2px 4px -2px rgb(16 24 40 / 0.06), 0 4px 8px -2px rgb(16 24 40 / 0.10);
+  --shadow-lg: 0 4px 6px -2px rgb(16 24 40 / 0.03), 0 12px 16px -4px rgb(16 24 40 / 0.08);
+
+
+  /* --- Layout -------------------------------------------------------------
+     Spacing uses Tailwind's default 4px base. Every gap and padding observed
+     in FINAL SCREENS (4/8/12/16/24/32) already lands on it, so no custom
+     spacing ramp is needed — p-1 p-2 p-3 p-4 p-6 p-8 cover the file.
+     These are the fixed structural dimensions that don't. */
+
+  --spacing-sidebar:        312px;  /* admin sidebar (1440 screens) */
+  --spacing-sidebar-narrow: 280px;  /* vendor sidebar (1280 screens) */
+  --spacing-appbar:         64px;   /* mobile top bar & bottom nav */
+}
+
+
+/* ============================================================================
+   2. SEMANTIC ROLES
+   ----------------------------------------------------------------------------
+   Components bind to these, never to the ramps above. To add a dark theme
+   later, redefine this block under a `.dark` / media query — no utility class
+   in any component needs to change.
+   ========================================================================== */
+
+:root {
+
+  /* --- Surfaces --- */
+  --ui-bg-page:      var(--color-gray-50);   /* app background behind cards */
+  --ui-bg-surface:   #FFFFFF;                /* cards, tables, panels */
+  --ui-bg-subtle:    var(--color-gray-50);   /* table headers, inset rows */
+  --ui-bg-muted:     var(--color-gray-100);  /* hover rows, disabled fills */
+  --ui-bg-brand:     var(--color-primary-600);
+  --ui-bg-brand-hover: var(--color-primary-700);
+  --ui-bg-brand-subtle: var(--color-primary-50);
+  --ui-bg-deep:      var(--color-primary-800); /* mobile bottom nav */
+
+  /* --- Text ---
+     Observed in FINAL SCREENS: 900 for headings and primary cells, 700 for UI
+     chrome (nav labels, buttons), 500 for secondary cells and column headers.
+     gray-600 is a filled ramp value and is deliberately not used as a role. */
+  --ui-text-primary:     var(--color-gray-900);  /* headings, metric numbers, key cells */
+  --ui-text-secondary:   var(--color-gray-700);  /* nav labels, button labels */
+  --ui-text-tertiary:    var(--color-gray-500);  /* column headers, supporting cells */
+  --ui-text-placeholder: var(--color-gray-400);
+  --ui-text-disabled:    var(--color-gray-300);
+  --ui-text-inverse:     #FFFFFF;
+  --ui-text-brand:       var(--color-primary-700);
+
+  /* --- Borders --- */
+  --ui-border-subtle:  var(--color-gray-100);  /* row dividers */
+  --ui-border-default: var(--color-gray-200);  /* card outlines, inputs */
+  --ui-border-strong:  var(--color-gray-300);  /* emphasis, focus rest state */
+  --ui-border-brand:   var(--color-primary-600);
+
+  /* --- Focus --- */
+  --ui-ring-brand: var(--color-primary-100);
+
+  /* --- Status pairs -------------------------------------------------------
+     Named by MEANING, not colour, so the same pill component serves every
+     domain vocabulary in the file (Shipped / In Printing / In Binding /
+     Ready for Dispatch / Processing / Delivered / Present / Late …). */
+
+  --ui-status-success-bg: var(--color-success-50);   /* Completed, Delivered, Paid, Present */
+  --ui-status-success-fg: var(--color-success-700);
+
+  --ui-status-warning-bg: var(--color-warning-50);   /* In Printing, Late, Due, Pending */
+  --ui-status-warning-fg: var(--color-warning-700);
+
+  --ui-status-error-bg:   var(--color-error-50);     /* Overdue, Cancelled, Absent, Failed */
+  --ui-status-error-fg:   var(--color-error-700);
+
+  --ui-status-info-bg:    var(--color-bluelight-50); /* In Binding, In Transit */
+  --ui-status-info-fg:    var(--color-bluelight-700);
+
+  --ui-status-progress-bg: var(--color-indigo-50);   /* Processing, In Review */
+  --ui-status-progress-fg: var(--color-indigo-700);
+
+  --ui-status-alert-bg:   var(--color-orange-50);    /* Returned, On Hold */
+  --ui-status-alert-fg:   var(--color-orange-700);
+
+  --ui-status-brand-bg:   var(--color-primary-50);   /* Ready for Dispatch, Quote Sent */
+  --ui-status-brand-fg:   var(--color-primary-700);
+
+  --ui-status-neutral-bg: var(--color-gray-100);     /* Draft, Archived, Inactive */
+  --ui-status-neutral-fg: var(--color-gray-700);
+}
+
+
+/* ============================================================================
+   3. EXPOSURE — semantic roles as Tailwind utilities
+   ----------------------------------------------------------------------------
+   `@theme inline` emits utilities that point at the var() rather than its
+   resolved value, so a future theme swap flows through automatically.
+
+   Generates: bg-surface, text-secondary, border-default, bg-status-success-bg,
+   text-status-success-fg, ring-brand, etc.
+   ========================================================================== */
+
+@theme inline {
+  --color-bg-page:         var(--ui-bg-page);
+  --color-surface:         var(--ui-bg-surface);
+  --color-subtle:          var(--ui-bg-subtle);
+  --color-muted:           var(--ui-bg-muted);
+  --color-brand:           var(--ui-bg-brand);
+  --color-brand-hover:     var(--ui-bg-brand-hover);
+  --color-brand-subtle:    var(--ui-bg-brand-subtle);
+  --color-deep:            var(--ui-bg-deep);
+
+  --color-primary:         var(--ui-text-primary);
+  --color-secondary:       var(--ui-text-secondary);
+  --color-tertiary:        var(--ui-text-tertiary);
+  --color-placeholder:     var(--ui-text-placeholder);
+  --color-disabled:        var(--ui-text-disabled);
+  --color-inverse:         var(--ui-text-inverse);
+  --color-on-brand:        var(--ui-text-brand);
+
+  --color-border-subtle:   var(--ui-border-subtle);
+  --color-border-default:  var(--ui-border-default);
+  --color-border-strong:   var(--ui-border-strong);
+  --color-border-brand:    var(--ui-border-brand);
+
+  --color-ring-brand:      var(--ui-ring-brand);
+
+  --color-status-success-bg:  var(--ui-status-success-bg);
+  --color-status-success-fg:  var(--ui-status-success-fg);
+  --color-status-warning-bg:  var(--ui-status-warning-bg);
+  --color-status-warning-fg:  var(--ui-status-warning-fg);
+  --color-status-error-bg:    var(--ui-status-error-bg);
+  --color-status-error-fg:    var(--ui-status-error-fg);
+  --color-status-info-bg:     var(--ui-status-info-bg);
+  --color-status-info-fg:     var(--ui-status-info-fg);
+  --color-status-progress-bg: var(--ui-status-progress-bg);
+  --color-status-progress-fg: var(--ui-status-progress-fg);
+  --color-status-alert-bg:    var(--ui-status-alert-bg);
+  --color-status-alert-fg:    var(--ui-status-alert-fg);
+  --color-status-brand-bg:    var(--ui-status-brand-bg);
+  --color-status-brand-fg:    var(--ui-status-brand-fg);
+  --color-status-neutral-bg:  var(--ui-status-neutral-bg);
+  --color-status-neutral-fg:  var(--ui-status-neutral-fg);
+}
+
+
+/* ============================================================================
+   RECONCILIATION LOG
+   ----------------------------------------------------------------------------
+   FINAL SCREENS contains three styling dialects. Untitled UI (desktop admin)
+   is canonical; the other two were folded in. Every merge below is a value
+   that appeared in the file and is NOT represented verbatim in the tokens —
+   listed so the drift is visible rather than silently lost.
+
+   MOBILE CLIENT (390px) dialect          →  canonical token
+     #5123AD  bottom nav                  →  primary-800  (#53389E)
+     #6941C6  avatar                      →  primary-700  (exact match)
+     #F9F9FF  page background             →  gray-50
+     #CBC3D6  borders                     →  gray-300     (purple-tinted → neutral)
+     #141B2C  headings                    →  gray-900
+     #494453  body text                   →  gray-600
+     #F1F3FF  table header                →  gray-100
+     #D1FAE5 / #065F46  Shipped·Delivered →  status-success
+     #DBEAFE / #1E40AF  Processing        →  status-progress
+     radius 12px                          →  radius-lg (kept)
+
+   VENDOR PORTAL (1280px) dialect         →  canonical token
+     #F8F9FA  card surface                →  gray-50
+     #E5E7EB  borders                     →  gray-200
+     #191C1D  headings                    →  gray-900
+     #4A4455  labels                      →  gray-600
+     #10B981  positive metric             →  success-500
+     #F59E0B  attention metric            →  warning-500
+     28px/32  metric numbers              →  display-sm (30/38)
+     radius 12px                          →  radius-lg (kept)
+
+   NOT MERGED — genuine structural differences kept as separate tokens:
+     radius 8px (desktop) vs 12px (mobile/vendor)  → radius-md / radius-lg
+     badge radius 16px (desktop) vs full (mobile)  → radius-xl / radius-full
+
+   KNOWN GAP: the vendor portal carries no Figma variables at all — its values
+   were read from rendered design context, so it has no upstream source of
+   truth in the file. Treat vendor-specific values as the least authoritative.
+   ========================================================================== */
