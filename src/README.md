@@ -159,6 +159,13 @@ prop - see the three Clients routes mapping to one `ClientsPage`.
 | Staff detail dialog     | Shivalik Admin | 1181:84909/36/72 (77 is a duplicate frame, not modelled) | opens on row click or "View" |
 | Add Staff Member dialog | Shivalik Admin | 1181:84993              | opens from "Add Staff Member" |
 | Edit Staff Member dialog| Shivalik Admin | 1181:85085              | opens from the detail dialog's "Edit" |
+| Client Issues           | Shivalik Admin | 1180:36896              | `/admin/support/client-issues` |
+| Vendor Issues           | Shivalik Admin | 1180:37141              | `/admin/support/vendor-issues` |
+| Knowledge Base          | Shivalik Admin | 1180:37386              | `/admin/support/knowledge-base` |
+| New Ticket dialog       | Shivalik Admin | 1180:37549/37586/37608/37567 | opens from "New Ticket" |
+| View Ticket dialog      | Shivalik Admin | 1180:37631/37655        | opens on row click or "View" |
+| Escalate dialog         | Shivalik Admin | 1180:37643/37667        | opens from a row's "Escalate" |
+| Add/Edit article dialog | Shivalik Admin | 1180:37689/37679        | opens from "Add knowledge base" or a row's "Edit" |
 
 The Dashboard's Add Client action reuses the same `AddClientDialog` built for
 the Clients screen. Add Vendor, Create Quote and Generate Invoice are their
@@ -166,6 +173,17 @@ own components, following the same `Modal` + `TextField` pattern. Add/Edit
 Staff Member are one component (`StaffFormDialog`, mode-parameterised) - see
 "One dialog, three modes" above; it is the same construction with two modes
 instead of three.
+
+Client Issues and Vendor Issues are one component too - `SupportTicketsPage`
+takes an `audience` prop off the route, the way `ClientsPage` takes `filter`.
+The two Figma frames differ only in which tickets they list. `NewTicketDialog`
+is the three-mode pattern again (Self / Client / Vendor swap one row of
+pickers); `ArticleFormDialog` is the two-mode Add/Edit pattern.
+
+Support's sub-nav (Client Issues / Vendor Issues / Knowledge Base) needed no
+component change - `Sidebar` renders `footerNav` through the same
+`SidebarNavItem` as `nav`, which already handles a `children`-bearing entry,
+so it was a data edit in `routes/portals.js` alone.
 
 ## One dialog, three modes
 
@@ -203,6 +221,31 @@ reproduced. These were changed on purpose:
 | The Attendance tab's 3-month calendar shows a broken date sequence in all three grids (e.g. "26 27 28 29 30 32 1" - a phantom "32") | Real calendar math for Jan/Feb/Mar 2022 | Unlike copy or colour placeholders, wrong dates would actively mislead - this is the one deviation here driven by correctness, not by taste. |
 | Calendar's connected present-day range (Untitled UI's date-range-picker chrome, joined pills across adjacent days) | Independent rounded pills per day | The connector adds no information beyond "these two adjacent days are both present," which independent pills already convey - not worth reproducing pixel-for-pixel. |
 | Attendance table: one decided row's dropdown ("Late") looks enabled despite already having an outcome badge; the other decided row's dropdown is visibly locked | Both decided rows lock the dropdown | Figma is internally inconsistent on this one control state across its two examples; the locked state is the one that reads correctly once a decision exists, so both rows use it. |
+| Knowledge base body field labelled "Contect" | "Body (markdown)" | Typo. The Edit-article frame labels the same field correctly, so this is the frame's own wording, not a rename. |
+| "Add knowledge base" opens prefilled with the Edit frame's data ("How to record a payment" / "Payment") | Add mode starts empty | Copy-paste leftover from duplicating the Edit frame; every other Add dialog in the app starts empty. |
+| Ticket table draws a blank header over "View" and "Action" over "Escalate" | One right-aligned "Action" header spanning both | They are one column of row actions; a blank `<th>` announces as an empty column to screen readers. |
+| Escalate's "Reason" placeholder is centred in its box | Top-left, like every other textarea | The "Assign to" field in the same dialog is left-aligned, so the centring is a stray text-layer property, not an intent. |
+| Escalate dialog titled "Escalate TK-2001" while the table lists `TKT-100xx` ids | Title reads the actual row's id | The two ids don't come from the same series - the frame's title was never updated to the table it sits over. |
+| Ticket table's cells drawn tightly packed, with column ranges that overlap between rows | `<Table density="dense" nowrap>` | The frame is loosely assembled (stray dividers, overlapping column ranges), but the intent is unambiguous: 9 single-line columns. See "Table density" below. |
+
+## Table density
+
+`Table` takes two opt-in props, both added for the Support ticket table:
+
+- `density="dense"` drops the cell gutter from 24px to 12px. Nine columns at
+  the default gutter spend 432px on padding alone in a 1098px content area,
+  which forces every cell to wrap.
+- `nowrap` puts cells on one line (`TH` has always been nowrap; `TD` was not).
+
+Neither is the default, and that is deliberate: Finance's ten columns rely on
+being able to wrap to keep the row-action column on screen, so turning either
+on globally clips it. A screen opts in once it has budgeted the width.
+
+`StatCard` gained a `tone` prop in this phase for Support's "Avg resolution
+time" card, which shows a *downward* arrow in a *success*-toned pill because a
+shorter resolution time is the good outcome. `tone` overrides the colour the
+arrow direction would otherwise imply, without touching the arrow. `Modal`
+gained `showCloseButton` for the four Support dialogs.
 
 The client detail dialog exists as three Figma frames (Groups 26/27/28,
 Clients screen) drawn over a flattened screenshot of the page; the three

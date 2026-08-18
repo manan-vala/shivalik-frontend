@@ -23,4 +23,5 @@ export const ICON_NAMES = [
   "users-plus",
   "users",
   "wallet",
+  "x-close",
 ];

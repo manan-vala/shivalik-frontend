@@ -10,6 +10,8 @@ import DashboardPage from "../pages/shivalik-admin/DashboardPage.jsx";
 import FinancePage from "../pages/shivalik-admin/FinancePage.jsx";
 import StaffPage from "../pages/shivalik-admin/StaffPage.jsx";
 import AttendancePage from "../pages/shivalik-admin/AttendancePage.jsx";
+import SupportTicketsPage from "../pages/shivalik-admin/SupportTicketsPage.jsx";
+import KnowledgeBasePage from "../pages/shivalik-admin/KnowledgeBasePage.jsx";
 
 /**
  * Route tree
@@ -29,7 +31,8 @@ import AttendancePage from "../pages/shivalik-admin/AttendancePage.jsx";
 
 /**
  * Real screens, keyed by "<portalId>:<path>".
- * The Clients sub-routes share one page - the filter is a prop, not a copy.
+ * The Clients sub-routes share one page - the filter is a prop, not a copy,
+ * and Support's two ticket screens share one page the same way.
  */
 const BUILT_PAGES = {
   "shivalik-admin:dashboard": <DashboardPage />,
@@ -39,6 +42,9 @@ const BUILT_PAGES = {
   "shivalik-admin:clients": <ClientsPage filter="all" />,
   "shivalik-admin:clients/active": <ClientsPage filter="active" />,
   "shivalik-admin:clients/inactive": <ClientsPage filter="inactive" />,
+  "shivalik-admin:support/client-issues": <SupportTicketsPage audience="client" />,
+  "shivalik-admin:support/vendor-issues": <SupportTicketsPage audience="vendor" />,
+  "shivalik-admin:support/knowledge-base": <KnowledgeBasePage />,
 };
 
 function portalRoute(portal) {

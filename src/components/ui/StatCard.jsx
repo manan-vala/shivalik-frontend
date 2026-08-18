@@ -12,10 +12,18 @@ import Badge from "./Badge.jsx";
  * Figma (nodes 790:22349, 790:22392): white, 1px gray-200, radius 8, p-24,
  * gap-8; label 14/20 medium gray-500; number 30/38 semibold gray-900.
  *
- * `direction` is semantic, not decorative: "up" is success, "down" is error,
- * and the arrow rotates so the trend is never carried by colour alone.
+ * `direction` always rotates the arrow - it is a literal "the number went up
+ * or down" fact. It also *defaults* the badge's colour (up→success,
+ * down→error), which holds for every dashboard metric where more is better,
+ * but not universally: Support's "Avg resolution time" card (node
+ * 1180:36931) shows a downward arrow in a *success*-toned pill, because a
+ * shorter resolution time is the good outcome. `tone` overrides the colour
+ * for exactly that case without touching the arrow, which still has to point
+ * the way the number actually moved.
  */
-export default function StatCard({ label, value, delta, direction }) {
+export default function StatCard({ label, value, delta, direction, tone }) {
+  const badgeTone = tone ?? (direction === "down" ? "error" : "success");
+
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border-default bg-surface p-6 shadow-sm">
       <p className="text-sm font-medium text-tertiary">{label}</p>
@@ -26,7 +34,7 @@ export default function StatCard({ label, value, delta, direction }) {
         </p>
 
         {delta && (
-          <Badge tone={direction === "down" ? "error" : "success"} size="md">
+          <Badge tone={badgeTone} size="md">
             <Icon
               name="arrow-up"
               size="sm"

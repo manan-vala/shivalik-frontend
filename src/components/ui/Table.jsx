@@ -1,3 +1,5 @@
+import { createContext, useContext, useMemo } from "react";
+
 /**
  * Table primitives
  * -----------------------------------------------------------------------------
@@ -28,6 +30,28 @@ const ALIGN = {
   right: "text-right justify-end",
 };
 
+/**
+ * Cell density.
+ *
+ * The default 24px gutter is the Figma spec for the 5-7 column tables
+ * (Clients, Staff, Finance). Support's ticket table carries 9 columns in the
+ * same 1098px content area, where 24px gutters alone would eat 432px and
+ * force every cell to wrap - the design draws those cells single-line and
+ * tightly packed. `density="dense"` is that second spec, kept here so a
+ * screen picks a documented option instead of overriding padding per cell.
+ *
+ * `nowrap` is the matching opt-in for single-line cells. It is NOT the default:
+ * the wider tables (Finance's 10 columns) rely on being able to wrap to keep
+ * their last column on screen, so forcing one line there clips the row
+ * actions. A screen turns it on once it has budgeted the width for it.
+ */
+const TableContext = createContext({ density: "default", nowrap: false });
+
+const PAD = {
+  default: "px-6",
+  dense: "px-3",
+};
+
 export function TableCard({ children, className = "" }) {
   return (
     <div
@@ -55,13 +79,22 @@ export function TableToolbar({ children, className = "" }) {
   );
 }
 
-export function Table({ children, className = "" }) {
+export function Table({
+  children,
+  density = "default",
+  nowrap = false,
+  className = "",
+}) {
+  const ctx = useMemo(() => ({ density, nowrap }), [density, nowrap]);
+
   return (
-    <div className="overflow-x-auto">
-      <table className={["w-full border-collapse", className].join(" ")}>
-        {children}
-      </table>
-    </div>
+    <TableContext.Provider value={ctx}>
+      <div className="overflow-x-auto">
+        <table className={["w-full border-collapse", className].join(" ")}>
+          {children}
+        </table>
+      </div>
+    </TableContext.Provider>
   );
 }
 
@@ -85,12 +118,14 @@ export function TR({ children, className = "", ...rest }) {
 }
 
 export function TH({ children, align = "left", width, className = "" }) {
+  const { density } = useContext(TableContext);
+
   return (
     <th
       scope="col"
       style={width ? { width } : undefined}
       className={[
-        "h-11 px-6 py-3 text-xs font-medium text-tertiary whitespace-nowrap",
+        `h-11 ${PAD[density]} py-3 text-xs font-medium text-tertiary whitespace-nowrap`,
         ALIGN[align].split(" ")[0],
         className,
       ].join(" ")}
@@ -101,10 +136,13 @@ export function TH({ children, align = "left", width, className = "" }) {
 }
 
 export function TD({ children, align = "left", className = "", ...rest }) {
+  const { density, nowrap } = useContext(TableContext);
+
   return (
     <td
       className={[
-        "h-18 px-6 py-4 text-sm text-tertiary align-middle",
+        `h-18 ${PAD[density]} py-4 text-sm text-tertiary align-middle`,
+        nowrap ? "whitespace-nowrap" : "",
         ALIGN[align].split(" ")[0],
         className,
       ].join(" ")}

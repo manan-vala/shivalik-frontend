@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from "react";
+import Icon from "./Icon.jsx";
 
 /**
  * Modal
@@ -27,6 +28,12 @@ export default function Modal({
   width = 846,
   children,
   footer,
+  // The Support dialogs (New Ticket, View Ticket, Escalate, Edit article -
+  // nodes 1180:37549 etc.) are the first in the file to draw a visible close
+  // control beside the title, rather than relying on Escape/backdrop/a footer
+  // Cancel alone. Opt-in and scoped to the plain-`title` path, so every
+  // earlier dialog's header is unchanged.
+  showCloseButton = false,
 }) {
   const ref = useRef(null);
   const generatedId = useId();
@@ -71,12 +78,24 @@ export default function Modal({
                 one line of chrome - the client detail dialog puts a city and a
                 status badge under the name. */}
             {header ?? (
-              <h2
-                id={titleId}
-                className="text-display-xs font-medium text-primary"
-              >
-                {title}
-              </h2>
+              <div className="flex items-center justify-between gap-4">
+                <h2
+                  id={titleId}
+                  className="text-display-xs font-medium text-primary"
+                >
+                  {title}
+                </h2>
+                {showCloseButton && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close"
+                    className="shrink-0 text-on-brand transition-colors hover:text-brand"
+                  >
+                    <Icon name="x-close" size="md" />
+                  </button>
+                )}
+              </div>
             )}
             {children}
           </div>

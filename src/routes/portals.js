@@ -69,7 +69,17 @@ export const PORTALS = {
       },
     ],
     footerNav: [
-      { path: "support", label: "Support", icon: "life-buoy" },
+      {
+        path: "support",
+        label: "Support",
+        icon: "life-buoy",
+        // Sub-items are visible in the Support screens (node 1180:36896).
+        children: [
+          { path: "support/client-issues", label: "Client Issues" },
+          { path: "support/vendor-issues", label: "Vendor Issues" },
+          { path: "support/knowledge-base", label: "Knowledge Base" },
+        ],
+      },
       { path: "settings", label: "Settings", icon: "settings" },
     ],
   },

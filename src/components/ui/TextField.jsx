@@ -64,14 +64,65 @@ export function TextField({
   );
 }
 
+/**
+ * Multi-line field - "Body", "Add note", "Reason" across the Support dialogs
+ * (nodes 1180:37549, 37631, 37643). Same label/border/focus chrome as
+ * TextField; a plain `<textarea>` in place of the single-line control since
+ * none of TextField's inline-action slot is used by any multi-line field.
+ */
+export function Textarea({
+  label,
+  rows = 4,
+  maxLength,
+  value = "",
+  className = "",
+  ...rest
+}) {
+  const id = useId();
+
+  return (
+    <div className={["flex flex-col gap-2", className].join(" ")}>
+      <div className="flex items-baseline justify-between">
+        <Label htmlFor={id}>{label}</Label>
+        {maxLength && (
+          <span className="text-xs text-placeholder">
+            {value.length}/{maxLength}
+          </span>
+        )}
+      </div>
+      {/* FIELD's focus-within only lights up for a focused *descendant* - the
+          bare `${FIELD} ${CONTROL}` concatenation TextField/Select use won't
+          work here because the textarea itself is the focusable element, not
+          a child of the bordered box. Wrapping it restores that contract. */}
+      <div className={FIELD}>
+        <textarea
+          id={id}
+          rows={rows}
+          maxLength={maxLength}
+          value={value}
+          className={`${CONTROL} resize-none`}
+          {...rest}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function SelectField({
   label,
   options = [],
   placeholder = "Select",
   className = "",
+  value,
   ...rest
 }) {
   const id = useId();
+  // Controlled and uncontrolled callers both exist, and React warns if a
+  // select carries `value` and `defaultValue` at once - so the empty
+  // "show the placeholder" default is only supplied when nobody is driving
+  // the field from state.
+  const modeProps =
+    value === undefined ? { defaultValue: "" } : { value };
 
   return (
     <div className={["flex flex-col gap-2", className].join(" ")}>
@@ -82,7 +133,7 @@ export function SelectField({
           // appearance-none so the field keeps the designed chevron rather than
           // the platform's own dropdown arrow.
           className={`${CONTROL} appearance-none`}
-          defaultValue=""
+          {...modeProps}
           {...rest}
         >
           <option value="" disabled>
@@ -138,16 +189,30 @@ export function Select({ options = [], className = "", disabled, ...rest }) {
   );
 }
 
-/** Radio group - the Vendor Type control in the Add Vendor dialog. */
-export function RadioGroup({ label, name, options = [], value, onChange }) {
+/**
+ * Radio group - the Vendor Type control in the Add Vendor dialog (horizontal,
+ * the default) and the New Ticket dialog's Priority control (vertical, node
+ * 1180:37562 - each option its own 40px row).
+ */
+export function RadioGroup({
+  label,
+  name,
+  options = [],
+  value,
+  onChange,
+  layout = "horizontal",
+}) {
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="text-md font-semibold text-tertiary">{label}</legend>
-      <div className="flex gap-6">
+      <div className={layout === "vertical" ? "flex flex-col" : "flex gap-6"}>
         {options.map((opt) => (
           <label
             key={opt}
-            className="flex flex-1 cursor-pointer items-center gap-2 text-md text-primary"
+            className={[
+              "flex cursor-pointer items-center gap-2 text-md text-primary",
+              layout === "vertical" ? "h-10" : "flex-1",
+            ].join(" ")}
           >
             <input
               type="radio"
