@@ -185,6 +185,14 @@
   --ui-bg-brand-subtle: var(--color-primary-50);
   --ui-bg-deep:      var(--color-primary-800); /* mobile bottom nav */
 
+  /* Solid-fill action colour for confirming affirmative money movement -
+     "Add Payment", "Verify" on the Finance screens (nodes 1180:36020 /
+     36066). Built from the same success ramp as the status pills, not a new
+     colour, so an action button and its own outcome badge read as the same
+     idea. */
+  --ui-bg-success:       var(--color-success-500);
+  --ui-bg-success-hover: var(--color-success-700);
+
   /* --- Text ---
      Observed in FINAL SCREENS: 900 for headings and primary cells, 700 for UI
      chrome (nav labels, buttons), 500 for secondary cells and column headers.
@@ -256,6 +264,8 @@
   --color-brand-hover:     var(--ui-bg-brand-hover);
   --color-brand-subtle:    var(--ui-bg-brand-subtle);
   --color-deep:            var(--ui-bg-deep);
+  --color-success:         var(--ui-bg-success);
+  --color-success-hover:   var(--ui-bg-success-hover);
 
   --color-primary:         var(--ui-text-primary);
   --color-secondary:       var(--ui-text-secondary);
