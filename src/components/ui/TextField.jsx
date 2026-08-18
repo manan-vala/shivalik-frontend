@@ -100,4 +100,69 @@ export function SelectField({
   );
 }
 
+/**
+ * Bare select with no label block - for a select that sits inside a table row
+ * or toolbar where the column header already names it. `aria-label` is
+ * required so it still announces.
+ *
+ * `disabled` dims the whole control (border-default, text-disabled), not just
+ * the native element - the Staff Attendance table's decided rows lock the
+ * dropdown once Approved/Rejected (node 1181:84773).
+ */
+export function Select({ options = [], className = "", disabled, ...rest }) {
+  return (
+    <div
+      className={[
+        FIELD,
+        disabled ? "border-border-default" : "",
+        className,
+      ].join(" ")}
+    >
+      <select
+        disabled={disabled}
+        className={`${CONTROL} appearance-none ${disabled ? "text-disabled" : ""}`}
+        {...rest}
+      >
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      <Icon
+        name="chevron-down"
+        size="md"
+        className={`shrink-0 ${disabled ? "text-disabled" : "text-tertiary"}`}
+      />
+    </div>
+  );
+}
+
+/** Radio group - the Vendor Type control in the Add Vendor dialog. */
+export function RadioGroup({ label, name, options = [], value, onChange }) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-md font-semibold text-tertiary">{label}</legend>
+      <div className="flex gap-6">
+        {options.map((opt) => (
+          <label
+            key={opt}
+            className="flex flex-1 cursor-pointer items-center gap-2 text-md text-primary"
+          >
+            <input
+              type="radio"
+              name={name}
+              value={opt}
+              checked={value === opt}
+              onChange={(e) => onChange(e.target.value)}
+              className="size-4 accent-[var(--ui-bg-brand)]"
+            />
+            {opt}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export default TextField;

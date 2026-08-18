@@ -45,7 +45,16 @@ export const PORTALS = {
       { path: "vendors", label: "Vendors", icon: "truck", collapsible: true },
       { path: "orders", label: "Orders", icon: "check-square", collapsible: true },
       { path: "finance", label: "Finance", icon: "coin-stack" },
-      { path: "staff", label: "Staff", icon: "user", collapsible: true },
+      {
+        path: "staff",
+        label: "Staff",
+        icon: "user",
+        // Sub-items are visible in the Staff screens (node 1181:84436/84672).
+        children: [
+          { path: "staff", label: "All Staff", end: true },
+          { path: "staff/attendance", label: "Attendance" },
+        ],
+      },
       { path: "notifications", label: "Notification", icon: "bell", badge: 10 },
       {
         path: "analytics",

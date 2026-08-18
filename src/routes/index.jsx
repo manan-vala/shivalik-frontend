@@ -6,6 +6,10 @@ import Placeholder from "../pages/Placeholder.jsx";
 import RoleSwitcher from "../pages/RoleSwitcher.jsx";
 import RootRedirect from "../pages/RootRedirect.jsx";
 import ClientsPage from "../pages/shivalik-admin/ClientsPage.jsx";
+import DashboardPage from "../pages/shivalik-admin/DashboardPage.jsx";
+import FinancePage from "../pages/shivalik-admin/FinancePage.jsx";
+import StaffPage from "../pages/shivalik-admin/StaffPage.jsx";
+import AttendancePage from "../pages/shivalik-admin/AttendancePage.jsx";
 
 /**
  * Route tree
@@ -28,6 +32,10 @@ import ClientsPage from "../pages/shivalik-admin/ClientsPage.jsx";
  * The Clients sub-routes share one page - the filter is a prop, not a copy.
  */
 const BUILT_PAGES = {
+  "shivalik-admin:dashboard": <DashboardPage />,
+  "shivalik-admin:finance": <FinancePage />,
+  "shivalik-admin:staff": <StaffPage />,
+  "shivalik-admin:staff/attendance": <AttendancePage />,
   "shivalik-admin:clients": <ClientsPage filter="all" />,
   "shivalik-admin:clients/active": <ClientsPage filter="active" />,
   "shivalik-admin:clients/inactive": <ClientsPage filter="inactive" />,
