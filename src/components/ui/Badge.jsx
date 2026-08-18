@@ -38,7 +38,9 @@ export default function Badge({
   return (
     <span
       className={[
-        "inline-flex items-center justify-center rounded-xl font-medium whitespace-nowrap",
+        // gap-1 so a badge carrying a leading icon (the trend pills on the
+        // dashboard) spaces correctly; it is inert on text-only badges.
+        "inline-flex items-center justify-center gap-1 rounded-xl font-medium whitespace-nowrap",
         SIZES[size],
         TONES[tone],
         className,
