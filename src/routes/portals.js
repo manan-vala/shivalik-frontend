@@ -55,7 +55,23 @@ export const PORTALS = {
           { path: "vendors/inactive", label: "Inactive" },
         ],
       },
-      { path: "orders", label: "Orders", icon: "check-square", collapsible: true },
+      {
+        path: "orders",
+        label: "Orders",
+        icon: "check-square",
+        // Sub-items are visible in the Orders screen (node 1180:51161). Each
+        // segment after the first is an ORDER_STATUS key, so the route and the
+        // status it filters by are the same string.
+        children: [
+          { path: "orders", label: "All Orders", end: true },
+          { path: "orders/design", label: "In Design" },
+          { path: "orders/printing", label: "In Printing" },
+          { path: "orders/binding", label: "In Binding" },
+          { path: "orders/ready-for-dispatch", label: "Ready For Dispatch" },
+          { path: "orders/dispatched", label: "Dispatched" },
+          { path: "orders/delivered", label: "Delivered" },
+        ],
+      },
       { path: "finance", label: "Finance", icon: "coin-stack" },
       {
         path: "staff",

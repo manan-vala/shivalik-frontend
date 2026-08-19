@@ -53,7 +53,11 @@ src/
     clients/            AddClientDialog, ClientDetailDialog.
     vendors/            VendorFormDialog (add/edit), VendorDetailDialog
                         (4 tabs), AssignStockDialog, VendorChatDialog.
-    quotes/             CreateQuoteDialog.
+    orders/             OrderDetailDialog (4 tabs), OrderPartyTab,
+                        OrderTimeline, AssignVendorsDialog,
+                        ConfirmDispatchDialog.
+    quotes/             CreateQuoteDialog - also the Orders screen's
+                        "Add New Quote".
     invoices/           GenerateInvoiceDialog.
     finance/            PaymentFields + PaymentDialog - one dialog for Add /
                         Verify / View, parameterised by `mode`. See "One
@@ -172,6 +176,11 @@ prop - see the three Clients routes mapping to one `ClientsPage`.
 | Assign Stock dialog     | Shivalik Admin | 1180:48141              | opens from a row's "Assign" |
 | Vendor detail dialog    | Shivalik Admin | 1180:48178/48212/48262  | opens on row click or "View" |
 | Vendor chat panel       | Shivalik Admin | 1180:48315              | opens from the detail dialog's "Chat" |
+| Orders                  | Shivalik Admin | 1180:51161 (GOLDEN file) | `/admin/orders` + six stage routes |
+| Order detail dialog     | Shivalik Admin | 1180:50810/50943/51000/51057 | opens on row click or "View" |
+| Assign Vendors dialog   | Shivalik Admin | 1180:51117              | opens from a row's "Edit" |
+| Confirm Dispatch dialog | Shivalik Admin | 1180:51138              | opens from a ready row's "Dispatch" |
+| Create Quote (Orders)   | Shivalik Admin | 1180:50679              | opens from "Add New Quote" |
 
 The Dashboard's Add Client action reuses the same `AddClientDialog` built for
 the Clients screen. Add Vendor, Create Quote and Generate Invoice are their
@@ -200,6 +209,25 @@ Shivalik Admin sidebar, so it lands in this portal.
 and a Chat button; `VendorFormDialog` is the two-mode Add/Edit pattern.
 `AddVendorDialog` was **deleted** - see the deviation table for why the two
 files disagreed and which one won.
+
+Orders is the fourth screen built on the `filter`-prop construction, with
+seven routes behind one `OrdersPage`. Its route segments *are* the
+`ORDER_STATUS` keys, so there is no segment-to-status translation table to
+keep in sync.
+
+Two extractions came out of this phase rather than new one-off code:
+
+- **`ui/ChatThread`** - the vendor chat panel and three of the order detail
+  dialog's four tabs draw the identical thread. The bubbles, avatars, typing
+  indicator and composer now live in one component; `VendorChatDialog` is a
+  ~25-line wrapper around it.
+- **`orders/OrderPartyTab`** - the Client, Printing Vendor and Binding Vendor
+  frames are one component with a `party` prop, not three near-copies. Only
+  the Overview tab has a layout of its own.
+
+`CreateQuoteDialog` was **not** rebuilt: node 1180:50679 is the same eight
+fields and the same cost table as the frame it was already built from, so it
+only gained a "Save Draft" action and a close control.
 
 ## One dialog, three modes
 
@@ -250,6 +278,11 @@ reproduced. These were changed on purpose:
 | Assign Stock panel labels use #808080 and #666 - two greys outside the token set | `text-tertiary` / token roles | Nearest role is Gray/500 (#667085). Two one-off hex values are not worth leaving the token system for. |
 | Chat panel repeats the same stock portrait for every Anita Cruz message | Initials on a brand-tinted circle | Same call as the Attendance approval avatars - the file has no real per-person images. |
 | Escalate/vendor frames title a dialog with an id from a different series (e.g. "Escalate TK-2001" over `TKT-100xx` rows) | The actual row's id | The frame titles were never updated to the tables they sit over. |
+| Order detail drawn as a sheet filling the whole main content area (1128px, no dimmed backdrop) | `Modal` at width 1128 | Keeps the dialog behaviour every other detail view already has - Escape, focus trap, backdrop dismiss - rather than introducing a second overlay language for one screen. |
+| Binding Vendor tab omits the "Today" divider the Client and Printing Vendor tabs draw | Divider on all three | Same conversation on all three frames; the missing rule is an inconsistency between frames, not a state. |
+| Order detail frames all show ORD-5002 while the list runs ORD-10000 upward | Detail attached to the real row | Otherwise every row opens a dialog for an order id that is not in the table. |
+| Orders list has no pagination, unlike every other list screen | Rendered without one | Not adding a control the design does not have. |
+| Orders colours "In Printing" indigo and "In Binding" orange; the client detail dialog colours the same labels bluelight and indigo | Both kept, in separate vocabularies | The two frames genuinely paint the same labels differently. `data/orders.js` owns the Orders vocabulary; `data/clients.js` keeps the client dialog's. Colours were sampled from the rendered frame, not guessed. |
 
 ## Table density
 

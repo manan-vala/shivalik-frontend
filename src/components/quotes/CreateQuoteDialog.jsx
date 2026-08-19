@@ -8,6 +8,9 @@ import { QUOTE_OPTIONS, QUOTE_COSTS, formatINR } from "../../data/dashboard.js";
 /**
  * Create Quote dialog
  * Figma: FINAL SCREENS / Shivalik / Group 8 (node 790:22695)
+ *        GOLDEN / Orders (node 1180:50679) - the same eight fields and the
+ *        same cost table, plus a "Save Draft" action and a close control.
+ *        Reached from the Orders screen's "Add New Quote".
  *
  * Job specification on top, costed breakdown underneath, two actions.
  *
@@ -30,7 +33,13 @@ const EMPTY = {
   finishing: QUOTE_OPTIONS.finishing[0],
 };
 
-export default function CreateQuoteDialog({ open, onClose, onConvert, onSend }) {
+export default function CreateQuoteDialog({
+  open,
+  onClose,
+  onConvert,
+  onSend,
+  onSaveDraft,
+}) {
   const [values, setValues] = useState(EMPTY);
 
   const set = (key) => (e) =>
@@ -54,6 +63,7 @@ export default function CreateQuoteDialog({ open, onClose, onConvert, onSend }) 
       onClose={handleClose}
       title="Create Quote"
       width={950}
+      showCloseButton
       footer={
         <div className="flex flex-1 items-center justify-end gap-3">
           <Button variant="primary" onClick={() => onConvert?.(values)}>
@@ -61,6 +71,9 @@ export default function CreateQuoteDialog({ open, onClose, onConvert, onSend }) 
           </Button>
           <Button variant="secondary" onClick={() => onSend?.(values)}>
             Send to Client
+          </Button>
+          <Button variant="secondary" onClick={() => onSaveDraft?.(values)}>
+            Save Draft
           </Button>
         </div>
       }
