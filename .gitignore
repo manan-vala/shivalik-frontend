@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch file for composing commit messages (never committed).
+COMMIT_MSG.txt

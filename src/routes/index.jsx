@@ -12,6 +12,7 @@ import StaffPage from "../pages/shivalik-admin/StaffPage.jsx";
 import AttendancePage from "../pages/shivalik-admin/AttendancePage.jsx";
 import SupportTicketsPage from "../pages/shivalik-admin/SupportTicketsPage.jsx";
 import KnowledgeBasePage from "../pages/shivalik-admin/KnowledgeBasePage.jsx";
+import VendorsPage from "../pages/shivalik-admin/VendorsPage.jsx";
 
 /**
  * Route tree
@@ -45,6 +46,11 @@ const BUILT_PAGES = {
   "shivalik-admin:support/client-issues": <SupportTicketsPage audience="client" />,
   "shivalik-admin:support/vendor-issues": <SupportTicketsPage audience="vendor" />,
   "shivalik-admin:support/knowledge-base": <KnowledgeBasePage />,
+  "shivalik-admin:vendors": <VendorsPage filter="all" />,
+  "shivalik-admin:vendors/printing": <VendorsPage filter="printing" />,
+  "shivalik-admin:vendors/binding": <VendorsPage filter="binding" />,
+  "shivalik-admin:vendors/active": <VendorsPage filter="active" />,
+  "shivalik-admin:vendors/inactive": <VendorsPage filter="inactive" />,
 };
 
 function portalRoute(portal) {

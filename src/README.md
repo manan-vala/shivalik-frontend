@@ -51,7 +51,8 @@ src/
                         "Charts" below before adding a second one.
     dashboard/          LiveActivity, AttendanceRequests - Dashboard-only.
     clients/            AddClientDialog, ClientDetailDialog.
-    vendors/            AddVendorDialog.
+    vendors/            VendorFormDialog (add/edit), VendorDetailDialog
+                        (4 tabs), AssignStockDialog, VendorChatDialog.
     quotes/             CreateQuoteDialog.
     invoices/           GenerateInvoiceDialog.
     finance/            PaymentFields + PaymentDialog - one dialog for Add /
@@ -166,6 +167,11 @@ prop - see the three Clients routes mapping to one `ClientsPage`.
 | View Ticket dialog      | Shivalik Admin | 1180:37631/37655        | opens on row click or "View" |
 | Escalate dialog         | Shivalik Admin | 1180:37643/37667        | opens from a row's "Escalate" |
 | Add/Edit article dialog | Shivalik Admin | 1180:37689/37679        | opens from "Add knowledge base" or a row's "Edit" |
+| Vendors                 | Shivalik Admin | 1180:48387 (GOLDEN file) | `/admin/vendors`, `…/printing`, `…/binding`, `…/active`, `…/inactive` |
+| Add/Edit Vendor dialog  | Shivalik Admin | 1180:48049 / 48090      | opens from "Add Vendors" or a row's "Edit" |
+| Assign Stock dialog     | Shivalik Admin | 1180:48141              | opens from a row's "Assign" |
+| Vendor detail dialog    | Shivalik Admin | 1180:48178/48212/48262  | opens on row click or "View" |
+| Vendor chat panel       | Shivalik Admin | 1180:48315              | opens from the detail dialog's "Chat" |
 
 The Dashboard's Add Client action reuses the same `AddClientDialog` built for
 the Clients screen. Add Vendor, Create Quote and Generate Invoice are their
@@ -184,6 +190,16 @@ Support's sub-nav (Client Issues / Vendor Issues / Knowledge Base) needed no
 component change - `Sidebar` renders `footerNav` through the same
 `SidebarNavItem` as `nav`, which already handles a `children`-bearing entry,
 so it was a data edit in `routes/portals.js` alone.
+
+The Vendors screens come from a **different Figma file** - `GOLDEN (Copy)`,
+file key `VVZ3VLv1ftnqITsHBh8TEU` - not the `seBrOkPG7tYQyxwmF1Mx4j` file every
+earlier screen was built from. Despite the name, its Vendors frame is the
+Shivalik Admin sidebar, so it lands in this portal.
+
+`VendorDetailDialog` is `ClientDetailDialog`'s construction with a fourth tab
+and a Chat button; `VendorFormDialog` is the two-mode Add/Edit pattern.
+`AddVendorDialog` was **deleted** - see the deviation table for why the two
+files disagreed and which one won.
 
 ## One dialog, three modes
 
@@ -227,6 +243,13 @@ reproduced. These were changed on purpose:
 | Escalate's "Reason" placeholder is centred in its box | Top-left, like every other textarea | The "Assign to" field in the same dialog is left-aligned, so the centring is a stray text-layer property, not an intent. |
 | Escalate dialog titled "Escalate TK-2001" while the table lists `TKT-100xx` ids | Title reads the actual row's id | The two ids don't come from the same series - the frame's title was never updated to the table it sits over. |
 | Ticket table's cells drawn tightly packed, with column ranges that overlap between rows | `<Table density="dense" nowrap>` | The frame is loosely assembled (stray dividers, overlapping column ranges), but the intent is unambiguous: 9 single-line columns. See "Table density" below. |
+| Add Vendor drawn twice across two files: the older frame (790:22655) has a Printing/Binding **radio** group and a three-button footer; the GOLDEN frame (1180:48049) has **checkboxes** and two buttons | The GOLDEN version, as one `VendorFormDialog` | A vendor can do both printing and binding, and the newer frame ticks both boxes - the radio group was the wrong control. Unified rather than kept as two dialogs that disagree; the Dashboard's Add Vendor now opens this one too. |
+| Vendor detail dialog draws four tabs but the file contains only three panels - no Stock frame exists | Stock tab renders the vendor's material list | An inert fourth tab is a dead control. The panel uses the shape the Assign Stock dialog's "Current Stock" establishes. **Confirm against the intended design before release.** |
+| Vendors sidebar sub-items drawn as checkboxes (Printing / Binding / Active / Inactive) | Routes, as on Clients | The sidebar is generated from the portal registry and is a navigation tree, not a filter surface; stateful checkboxes there would have to reach across the app shell. Each item still resolves to the listing it names. |
+| Vendors backdrop screenshot is titled "Orders" | "Vendors" | The backdrop is a stale screenshot pasted under the dialogs; the live frame's own header reads "Vendors". |
+| Assign Stock panel labels use #808080 and #666 - two greys outside the token set | `text-tertiary` / token roles | Nearest role is Gray/500 (#667085). Two one-off hex values are not worth leaving the token system for. |
+| Chat panel repeats the same stock portrait for every Anita Cruz message | Initials on a brand-tinted circle | Same call as the Attendance approval avatars - the file has no real per-person images. |
+| Escalate/vendor frames title a dialog with an id from a different series (e.g. "Escalate TK-2001" over `TKT-100xx` rows) | The actual row's id | The frame titles were never updated to the tables they sit over. |
 
 ## Table density
 
@@ -241,8 +264,21 @@ Neither is the default, and that is deliberate: Finance's ten columns rely on
 being able to wrap to keep the row-action column on screen, so turning either
 on globally clips it. A screen opts in once it has budgeted the width.
 
-`StatCard` gained a `tone` prop in this phase for Support's "Avg resolution
-time" card, which shows a *downward* arrow in a *success*-toned pill because a
+Other shared components gained capabilities while building Vendors:
+
+- `CheckboxGroup` (in `TextField.jsx`, beside `RadioGroup`) - multi-select,
+  because a vendor can be both a printing and a binding vendor.
+- `NumberedPagination` (in `Pagination.jsx`) - "Previous 1 2 3 … 10 Next", the
+  control the vendor detail dialog's Order and Payment tabs draw. Distinct
+  from the three-button group used under full-page tables.
+- `TextField`'s `actionDisabled` - dims an inline Verify / Auto-generate in
+  place rather than removing it, which is what Edit Vendor draws.
+- `Modal`'s `showCloseButton` now also works alongside a custom `header`,
+  where it sits on its own row above the header content. Previously it was
+  scoped to the plain-`title` path, so the tabbed dialogs could not show one.
+
+`StatCard` gained a `tone` prop in an earlier phase for Support's "Avg
+resolution time" card, which shows a *downward* arrow in a *success*-toned pill because a
 shorter resolution time is the good outcome. `tone` overrides the colour the
 arrow direction would otherwise imply, without touching the arrow. `Modal`
 gained `showCloseButton` for the four Support dialogs.

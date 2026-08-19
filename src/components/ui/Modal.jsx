@@ -77,7 +77,20 @@ export default function Modal({
             {/* `header` replaces the plain title when a dialog needs more than
                 one line of chrome - the client detail dialog puts a city and a
                 status badge under the name. */}
-            {header ?? (
+            {header ? (
+              <>
+                {/* A custom header owns its own right-hand slot (the vendor
+                    detail dialog puts a Chat button there), so the close
+                    control sits on its own row above it - which is also where
+                    the Figma frames draw it. */}
+                {showCloseButton && (
+                  <div className="flex justify-end">
+                    <CloseButton onClose={onClose} />
+                  </div>
+                )}
+                {header}
+              </>
+            ) : (
               <div className="flex items-center justify-between gap-4">
                 <h2
                   id={titleId}
@@ -85,16 +98,7 @@ export default function Modal({
                 >
                   {title}
                 </h2>
-                {showCloseButton && (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label="Close"
-                    className="shrink-0 text-on-brand transition-colors hover:text-brand"
-                  >
-                    <Icon name="x-close" size="md" />
-                  </button>
-                )}
+                {showCloseButton && <CloseButton onClose={onClose} />}
               </div>
             )}
             {children}
@@ -106,5 +110,18 @@ export default function Modal({
         </div>
       )}
     </dialog>
+  );
+}
+
+function CloseButton({ onClose }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="Close"
+      className="shrink-0 text-on-brand transition-colors hover:text-brand"
+    >
+      <Icon name="x-close" size="md" />
+    </button>
   );
 }

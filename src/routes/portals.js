@@ -42,7 +42,19 @@ export const PORTALS = {
           { path: "clients/inactive", label: "Inactive" },
         ],
       },
-      { path: "vendors", label: "Vendors", icon: "truck", collapsible: true },
+      {
+        path: "vendors",
+        label: "Vendors",
+        icon: "truck",
+        // Sub-items are visible in the Vendors screen (node 1180:48387).
+        children: [
+          { path: "vendors", label: "All", end: true },
+          { path: "vendors/printing", label: "Printing Vendors" },
+          { path: "vendors/binding", label: "Binding Vendors" },
+          { path: "vendors/active", label: "Active" },
+          { path: "vendors/inactive", label: "Inactive" },
+        ],
+      },
       { path: "orders", label: "Orders", icon: "check-square", collapsible: true },
       { path: "finance", label: "Finance", icon: "coin-stack" },
       {

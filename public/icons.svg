@@ -50,6 +50,9 @@
   <symbol id="search" viewBox="-1.671 -1.671 20.008 20.008" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M15.8333 15.8333L12.2083 12.2083M14.1667 7.5C14.1667 11.1819 11.1819 14.1667 7.5 14.1667C3.8181 14.1667 0.833333 11.1819 0.833333 7.5C0.833333 3.8181 3.8181 0.833333 7.5 0.833333C11.1819 0.833333 14.1667 3.8181 14.1667 7.5Z" stroke="currentColor" stroke-width="1.667" stroke-linecap="round" stroke-linejoin="round"/>
   </symbol>
+  <symbol id="send" viewBox="-1.838 -1.838 22.013 22.013" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.5017 0.835023L8.335 10.0017M8.335 10.0017L0.835004 6.66836L17.5017 0.835023L11.6683 17.5017L8.335 10.0017Z" stroke="currentColor" stroke-width="1.834" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
   <symbol id="settings" viewBox="-2.406 -2.406 28.812 28.812" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g>
     <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2.401" stroke-linecap="round" stroke-linejoin="round"/>

@@ -31,13 +31,26 @@ function Label({ htmlFor, children }) {
   );
 }
 
-/** Small button that sits inside a field, e.g. "Verify". */
-function InlineAction({ children, onClick }) {
+/**
+ * Small button that sits inside a field, e.g. "Verify".
+ *
+ * `disabled` dims it in place rather than removing it - the Edit Vendor dialog
+ * (node 1180:48090) greys out Verify and Auto-generate, because an existing
+ * vendor's phone is already verified and its id already assigned, but keeps
+ * them visible so the field still reads as the same control as on Add.
+ */
+function InlineAction({ children, onClick, disabled }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="shrink-0 rounded-md border border-border-strong bg-surface px-3.5 py-2 text-sm font-medium text-secondary shadow-xs transition-colors hover:bg-muted"
+      disabled={disabled}
+      className={[
+        "shrink-0 rounded-md border border-border-strong bg-surface px-3.5 py-2 text-sm font-medium shadow-xs transition-colors",
+        disabled
+          ? "cursor-not-allowed border-border-default text-disabled"
+          : "text-secondary hover:bg-muted",
+      ].join(" ")}
     >
       {children}
     </button>
@@ -48,6 +61,7 @@ export function TextField({
   label,
   action,
   onAction,
+  actionDisabled,
   className = "",
   ...rest
 }) {
@@ -58,7 +72,11 @@ export function TextField({
       <Label htmlFor={id}>{label}</Label>
       <div className={FIELD}>
         <input id={id} className={CONTROL} {...rest} />
-        {action && <InlineAction onClick={onAction}>{action}</InlineAction>}
+        {action && (
+          <InlineAction onClick={onAction} disabled={actionDisabled}>
+            {action}
+          </InlineAction>
+        )}
       </div>
     </div>
   );
@@ -220,6 +238,48 @@ export function RadioGroup({
               value={opt}
               checked={value === opt}
               onChange={(e) => onChange(e.target.value)}
+              className="size-4 accent-[var(--ui-bg-brand)]"
+            />
+            {opt}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * Checkbox group - the Vendor Type control on the Add/Edit Vendor dialogs
+ * (nodes 1180:48081, 1180:48127).
+ *
+ * Distinct from RadioGroup above and not a restyle of it: a vendor can do both
+ * printing and binding, and the Figma frames show both boxes ticked at once,
+ * so this returns an array of the selected values rather than one.
+ */
+export function CheckboxGroup({ label, name, options = [], value = [], onChange }) {
+  function toggle(option) {
+    onChange(
+      value.includes(option)
+        ? value.filter((v) => v !== option)
+        : [...value, option]
+    );
+  }
+
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-md font-semibold text-tertiary">{label}</legend>
+      <div className="flex gap-6">
+        {options.map((opt) => (
+          <label
+            key={opt}
+            className="flex flex-1 cursor-pointer items-center gap-2 text-md text-primary"
+          >
+            <input
+              type="checkbox"
+              name={name}
+              value={opt}
+              checked={value.includes(opt)}
+              onChange={() => toggle(opt)}
               className="size-4 accent-[var(--ui-bg-brand)]"
             />
             {opt}

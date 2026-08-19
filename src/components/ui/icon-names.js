@@ -16,6 +16,7 @@ export const ICON_NAMES = [
   "log-out",
   "plus",
   "search",
+  "send",
   "settings",
   "truck",
   "user-plus",
