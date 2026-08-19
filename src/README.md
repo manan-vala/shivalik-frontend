@@ -47,8 +47,10 @@ src/
                         Table, PlainTable, Tabs, Modal, Pagination, PageHeader.
     navigation/         Sidebar + SidebarNavItem, driven by the portal registry
                         and shared by every desktop screen.
-    charts/             RevenueTrendChart - hand-rolled SVG, not a library. See
-                        "Charts" below before adding a second one.
+    charts/             Five hand-rolled SVG charts on a shared module, no
+                        charting dependency. See "Charts" below.
+    analytics/          AnalyticsLayout (header + range + Custom dialog),
+                        ChartCard, CustomRangeDialog.
     dashboard/          LiveActivity, AttendanceRequests - Dashboard-only.
     clients/            AddClientDialog, ClientDetailDialog.
     vendors/            VendorFormDialog (add/edit), VendorDetailDialog
@@ -120,17 +122,54 @@ relative to that box. Drop exports in unmodified.
 
 ## Charts
 
-`RevenueTrendChart` is hand-rolled SVG, not a charting library - the project
-has no chart dependency yet, and this one component did not justify adding
-one. If a second chart is needed, evaluate a library then; do not keep
-extending this file into one.
+The Analytics screens brought the second, third, fourth and fifth charts, so
+the "evaluate a library then" note this section used to carry was resolved:
+**hand-rolled on a shared module, no charting dependency.** These plots are
+static bars and arcs rather than interactive figures, the design tokens flow
+straight through as CSS variables, and a library would have meant rewriting
+`RevenueTrendChart` to match. Revisit if a chart ever needs brushing, zooming
+or real-time streaming.
 
-Its palette (`--color-primary-600` / `--color-primary-400`) was run through
-the dataviz skill's contrast/CVD validator before use - normal-vision
-separation dE 17.5, well clear of the floor. The lighter series sits under the
-3:1 contrast floor against white, which is why the chart carries a legend and
-a hover tooltip that the Figma mockup does not: colour alone is not enough to
-read it. Re-run the validator before changing either colour.
+```
+charts/
+  chart-utils.js      useMeasuredWidth, bandScale, linearScale, niceTicks,
+                      labelStride, CHART_SERIES        (no components)
+  primitives.jsx      GridLines, XAxisLabels, YAxisLabels, ChartLegend,
+                      ChartTooltip, ChartDataTable     (components only)
+  BarChart            Revenue by city        - single series
+  DonutChart          Vendor breakdown       - part-to-whole
+  GroupedBarChart     Revenue vs Collected   - two series
+  StackedBarChart     AR ageing              - ordered buckets
+  RevenueTrendChart   Order Frequency Trend  - change over time
+```
+
+The split between `chart-utils.js` and `primitives.jsx` is not cosmetic: Fast
+Refresh only works when a module exports components alone, so the hook and the
+constants cannot live beside them.
+
+### Colour
+
+Series colour comes from `--color-chart-1..5` in tokens.css, assigned in that
+fixed order and never cycled. That set is **not** what Figma draws, and the
+reason is recorded in tokens.css: the vendor-breakdown donut uses five steps of
+one purple ramp, which the dataviz validator rejects at worst-adjacent
+dE 7.8 normal-vision, below the 15 floor - two slices a reader with full colour
+vision cannot separate. The replacement cross-hue set passes every check
+(dE 25.1 deutan / 26.6 normal). Re-run `validate_palette.js` before changing
+any of them, and keep the order: it is what holds the two hardest-to-separate
+hues apart.
+
+Two places keep a single-hue ramp on purpose:
+
+- **AR ageing** stacks 0-30d -> 90d+, which is an *ordered* scale, and one hue
+  light-to-dark is the correct encoding for that. The check that applies is
+  lightness monotonicity, not the categorical CVD floor.
+- **RevenueTrendChart** and **GroupedBarChart** use primary-400/600, a pair
+  already validated at dE 17.5.
+
+Every chart carries a legend for two or more series, a `<title>` on each mark,
+and a collapsed "View data" table - the palette's sub-3:1 contrast warning
+obliges a visible label, and a chart should be readable without colour.
 
 ## Adding a screen
 
@@ -181,6 +220,10 @@ prop - see the three Clients routes mapping to one `ClientsPage`.
 | Assign Vendors dialog   | Shivalik Admin | 1180:51117              | opens from a row's "Edit" |
 | Confirm Dispatch dialog | Shivalik Admin | 1180:51138              | opens from a ready row's "Dispatch" |
 | Create Quote (Orders)   | Shivalik Admin | 1180:50679              | opens from "Add New Quote" |
+| Analytics / Sales       | Shivalik Admin | 1180:52808 (GOLDEN file) | `/admin/analytics/sales` |
+| Analytics / Operational | Shivalik Admin | 1180:53018              | `/admin/analytics/operational` |
+| Analytics / Financial   | Shivalik Admin | 1180:53377              | `/admin/analytics/financial` |
+| Customise analytics dialog | Shivalik Admin | 1180:53577 / 55034 / 55069 | opens from the "Custom" range option |
 
 The Dashboard's Add Client action reuses the same `AddClientDialog` built for
 the Clients screen. Add Vendor, Create Quote and Generate Invoice are their
@@ -228,6 +271,15 @@ Two extractions came out of this phase rather than new one-off code:
 `CreateQuoteDialog` was **not** rebuilt: node 1180:50679 is the same eight
 fields and the same cost table as the frame it was already built from, so it
 only gained a "Save Draft" action and a close control.
+
+The three Analytics screens share `AnalyticsLayout`, which owns the page
+header, the 7d/30d/90d/Custom control and the Custom dialog - the three frames
+differ only in what sits underneath. The three "Custom" frames the design
+supplies are byte-identical, so they are one `CustomRangeDialog`, not three.
+
+`SegmentedToggle` (in `ui/`) is the same control three times over: the range
+picker, the Revenue/Collected switch and the AR-ageing buckets. `joined` picks
+the skin; behaviour and markup are identical.
 
 ## One dialog, three modes
 
@@ -283,6 +335,12 @@ reproduced. These were changed on purpose:
 | Order detail frames all show ORD-5002 while the list runs ORD-10000 upward | Detail attached to the real row | Otherwise every row opens a dialog for an order id that is not in the table. |
 | Orders list has no pagination, unlike every other list screen | Rendered without one | Not adding a control the design does not have. |
 | Orders colours "In Printing" indigo and "In Binding" orange; the client detail dialog colours the same labels bluelight and indigo | Both kept, in separate vocabularies | The two frames genuinely paint the same labels differently. `data/orders.js` owns the Orders vocabulary; `data/clients.js` keeps the client dialog's. Colours were sampled from the rendered frame, not guessed. |
+| Vendor-breakdown donut drawn as five steps of one purple ramp | Validated cross-hue `--color-chart-1..5` | The validator rejects the original at dE 7.8 normal-vision separation, below the 15 floor: two slices are indistinguishable to a reader with full colour vision. These are unordered categories, so a single-hue ramp is the wrong encoding regardless. See "Charts". |
+| Analytics sidebar item named "Distribution" in the route registry | "Operational" | All three Analytics frames label it Operational; the registry name predated them. |
+| "Revenue vs Collected" y axis labelled "Active users" | "Amount" | Untitled UI template copy left on a revenue chart. A wrong axis label is worse than none. |
+| "Cost per delivery" last column header reads "Cost?delivery" | "Cost/delivery" | Stray character. |
+| AR ageing's bucket toggle reads as a filter, but the bars stack all four buckets at once | Toggle emphasises one bucket, dimming the rest | Filtering to one bucket would leave the stack showing a total that is not the total. Emphasis lets the control do something without hiding data. |
+| Analytics tables repeat one row and restart their numbering at 5 partway down | Distinct names, correct 1..10 sequence | Same placeholder repetition as the Clients screen; duplicate keys break list rendering. |
 
 ## Table density
 

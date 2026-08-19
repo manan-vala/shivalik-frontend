@@ -242,6 +242,36 @@
 
   --ui-status-neutral-bg: var(--color-gray-100);     /* Draft, Archived, Inactive */
   --ui-status-neutral-fg: var(--color-gray-700);
+
+  /* --------------------------------------------------------------------
+     Categorical chart series.
+
+     Assigned in this fixed order and never cycled - a chart with a sixth
+     category folds it into "Other" rather than reusing slot 1.
+
+     These are NOT the Figma colours. The vendor-breakdown donut (node
+     1180:52808) draws its five slices as five steps of one purple ramp,
+     which the dataviz validator rejects outright: worst adjacent pair
+     dE 7.8 normal-vision, below the 15 floor, meaning a reader with full
+     colour vision cannot separate the two lightest slices. Secondary
+     encoding does not excuse that one.
+
+     This cross-hue set was re-stepped from the project's own ramps and
+     validated (light mode, categorical):
+       lightness band  PASS   chroma floor  PASS
+       CVD separation  PASS   worst adjacent dE 25.1 deutan / 18.0 tritan
+       normal-vision   PASS   worst adjacent dE 26.6
+       contrast        WARN   chart-2 2.55:1, chart-4 2.29:1 vs surface
+     The contrast warning obliges visible labels, which is why every chart
+     using these carries a legend and value labels. Re-run
+     `validate_palette.js` before changing any of them, and keep the order:
+     it is what puts the two hardest-to-separate hues non-adjacent.
+     -------------------------------------------------------------------- */
+  --ui-chart-1: var(--color-primary-600);   /* #7F56D9 */
+  --ui-chart-2: var(--color-success-500);   /* #12B76A */
+  --ui-chart-3: var(--color-bluelight-700); /* #026AA2 */
+  --ui-chart-4: var(--color-warning-500);   /* #F79009 */
+  --ui-chart-5: var(--color-error-700);     /* #B42318 */
 }
 
 
@@ -296,6 +326,12 @@
   --color-status-alert-fg:    var(--ui-status-alert-fg);
   --color-status-brand-bg:    var(--ui-status-brand-bg);
   --color-status-brand-fg:    var(--ui-status-brand-fg);
+  --color-chart-1: var(--ui-chart-1);
+  --color-chart-2: var(--ui-chart-2);
+  --color-chart-3: var(--ui-chart-3);
+  --color-chart-4: var(--ui-chart-4);
+  --color-chart-5: var(--ui-chart-5);
+
   --color-status-neutral-bg:  var(--ui-status-neutral-bg);
   --color-status-neutral-fg:  var(--ui-status-neutral-fg);
 }

@@ -100,7 +100,7 @@ export default function RevenueTrendChart({ data }) {
       {/* Legend - identity is never carried by colour alone. */}
       <ul className="flex flex-wrap items-center gap-4">
         {series.map((s, i) => (
-          <li key={s.id} className="flex items-center gap-2">
+          <li key={s.id ?? s.label} className="flex items-center gap-2">
             <span
               aria-hidden="true"
               className={`h-0.5 w-4 rounded-full ${
@@ -222,7 +222,7 @@ export default function RevenueTrendChart({ data }) {
           >
             <p className="mb-1 text-xs font-medium text-primary">{months[hover]}</p>
             {series.map((s, i) => (
-              <p key={s.id} className="flex items-center gap-2 text-xs text-secondary">
+              <p key={s.id ?? s.label} className="flex items-center gap-2 text-xs text-secondary">
                 <span
                   aria-hidden="true"
                   className={`size-1.5 shrink-0 rounded-full ${

@@ -91,7 +91,9 @@ export const PORTALS = {
         // Derived from the three designed analytics screens.
         children: [
           { path: "analytics/sales", label: "Sales" },
-          { path: "analytics/distribution", label: "Distribution" },
+          // The Analytics frames (node 1180:52808) label this "Operational",
+          // not "Distribution" - renamed to match the design it describes.
+          { path: "analytics/operational", label: "Operational" },
           { path: "analytics/financial", label: "Financial" },
         ],
       },
