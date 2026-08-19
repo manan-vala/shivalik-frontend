@@ -17,6 +17,7 @@ import OrdersPage from "../pages/shivalik-admin/OrdersPage.jsx";
 import AnalyticsSalesPage from "../pages/shivalik-admin/AnalyticsSalesPage.jsx";
 import AnalyticsOperationalPage from "../pages/shivalik-admin/AnalyticsOperationalPage.jsx";
 import AnalyticsFinancialPage from "../pages/shivalik-admin/AnalyticsFinancialPage.jsx";
+import SettingsPage from "../pages/shivalik-admin/SettingsPage.jsx";
 
 /**
  * Route tree
@@ -65,6 +66,7 @@ const BUILT_PAGES = {
   "shivalik-admin:analytics/sales": <AnalyticsSalesPage />,
   "shivalik-admin:analytics/operational": <AnalyticsOperationalPage />,
   "shivalik-admin:analytics/financial": <AnalyticsFinancialPage />,
+  "shivalik-admin:settings": <SettingsPage />,
 };
 
 function portalRoute(portal) {

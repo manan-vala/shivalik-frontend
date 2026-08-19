@@ -51,6 +51,8 @@ src/
                         charting dependency. See "Charts" below.
     analytics/          AnalyticsLayout (header + range + Custom dialog),
                         ChartCard, CustomRangeDialog.
+    settings/           BusinessSettings, UsersSettings, RolesSettings,
+                        PermissionMatrix (shared), CreateRoleDialog.
     dashboard/          LiveActivity, AttendanceRequests - Dashboard-only.
     clients/            AddClientDialog, ClientDetailDialog.
     vendors/            VendorFormDialog (add/edit), VendorDetailDialog
@@ -224,6 +226,10 @@ prop - see the three Clients routes mapping to one `ClientsPage`.
 | Analytics / Operational | Shivalik Admin | 1180:53018              | `/admin/analytics/operational` |
 | Analytics / Financial   | Shivalik Admin | 1180:53377              | `/admin/analytics/financial` |
 | Customise analytics dialog | Shivalik Admin | 1180:53577 / 55034 / 55069 | opens from the "Custom" range option |
+| Settings / Business     | Shivalik Admin | 1181:87164 (GOLDEN file) | `/admin/settings` |
+| Settings / Users        | Shivalik Admin | 1181:88147              | Users tab |
+| Settings / Roles & Permissions | Shivalik Admin | 1181:87262       | Roles tab |
+| Create a Role dialog    | Shivalik Admin | 1181:87651              | opens from "Create a Role" |
 
 The Dashboard's Add Client action reuses the same `AddClientDialog` built for
 the Clients screen. Add Vendor, Create Quote and Generate Invoice are their
@@ -280,6 +286,20 @@ supplies are byte-identical, so they are one `CustomRangeDialog`, not three.
 `SegmentedToggle` (in `ui/`) is the same control three times over: the range
 picker, the Revenue/Collected switch and the AR-ageing buckets. `joined` picks
 the skin; behaviour and markup are identical.
+
+Settings is three tabs over one page, with the tab list being the shared
+`Tabs` primitive in its new `orientation="vertical"` skin - same ARIA pattern
+and same markup, only the arrow keys change to Up/Down.
+
+Node 1181:88057 ("Edit Staff Member", linked as a fifth Settings design) is
+**already built**: it is `StaffFormDialog` in edit mode, down to the same six
+fields, the same 1052px box and the same "file123456" contract. The Users tab
+opens that component rather than adding a second staff form.
+
+`PermissionMatrix` is drawn twice in the file - on the Roles tab and inside
+Create a Role - so it is one component used twice. Both callers own their own
+draft state and pass it down, which keeps the matrix a presentation component
+and lets Create a Role edit a draft without touching the tab behind it.
 
 ## One dialog, three modes
 
@@ -341,6 +361,10 @@ reproduced. These were changed on purpose:
 | "Cost per delivery" last column header reads "Cost?delivery" | "Cost/delivery" | Stray character. |
 | AR ageing's bucket toggle reads as a filter, but the bars stack all four buckets at once | Toggle emphasises one bucket, dimming the rest | Filtering to one bucket would leave the stack showing a total that is not the total. Emphasis lets the control do something without hiding data. |
 | Analytics tables repeat one row and restart their numbering at 5 partway down | Distinct names, correct 1..10 sequence | Same placeholder repetition as the Clients screen; duplicate keys break list rendering. |
+| Permission matrix cells drawn as static pills | Buttons that cycle Full -> View Only -> None | A permissions screen whose cells cannot be changed is not a permissions screen. The level is always spelled out, never carried by colour, and each button's accessible name names its section and role - a grid of pills all reading "Full" is unnavigable otherwise. |
+| "Operating cities" shows five removable chips but no way to add one | Chips plus an add field | A list you can empty but never refill is a dead end. Smallest addition that makes the control coherent. |
+| Permission matrix row labelled "Anaytics" | "Analytics" | Typo, and it names a real section of the app spelled correctly everywhere else. |
+| Create a Role drawn as a full-width sheet | `Modal` at 1128px | Same call as the order detail dialog - keeps Escape, focus trap and backdrop dismiss rather than a second overlay language. |
 
 ## Table density
 
