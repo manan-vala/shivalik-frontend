@@ -18,6 +18,8 @@ import AnalyticsSalesPage from "../pages/shivalik-admin/AnalyticsSalesPage.jsx";
 import AnalyticsOperationalPage from "../pages/shivalik-admin/AnalyticsOperationalPage.jsx";
 import AnalyticsFinancialPage from "../pages/shivalik-admin/AnalyticsFinancialPage.jsx";
 import SettingsPage from "../pages/shivalik-admin/SettingsPage.jsx";
+import WarehouseMapPage from "../pages/shivalik-admin/WarehouseMapPage.jsx";
+import EmptyRacksPage from "../pages/shivalik-admin/EmptyRacksPage.jsx";
 
 /**
  * Route tree
@@ -67,6 +69,8 @@ const BUILT_PAGES = {
   "shivalik-admin:analytics/operational": <AnalyticsOperationalPage />,
   "shivalik-admin:analytics/financial": <AnalyticsFinancialPage />,
   "shivalik-admin:settings": <SettingsPage />,
+  "shivalik-admin:inventory-map/warehouse-map": <WarehouseMapPage />,
+  "shivalik-admin:inventory-map/empty-racks": <EmptyRacksPage />,
 };
 
 function portalRoute(portal) {
