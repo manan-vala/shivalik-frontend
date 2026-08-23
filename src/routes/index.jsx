@@ -18,6 +18,13 @@ import AnalyticsSalesPage from "../pages/shivalik-admin/AnalyticsSalesPage.jsx";
 import AnalyticsOperationalPage from "../pages/shivalik-admin/AnalyticsOperationalPage.jsx";
 import AnalyticsFinancialPage from "../pages/shivalik-admin/AnalyticsFinancialPage.jsx";
 import SettingsPage from "../pages/shivalik-admin/SettingsPage.jsx";
+import InventoryPage from "../pages/shivalik-admin/InventoryPage.jsx";
+import InventoryInStockPage from "../pages/shivalik-admin/InventoryInStockPage.jsx";
+import InventoryInEntryPage from "../pages/shivalik-admin/InventoryInEntryPage.jsx";
+import InventoryAllPage from "../pages/shivalik-admin/InventoryAllPage.jsx";
+import InventoryLowStockPage from "../pages/shivalik-admin/InventoryLowStockPage.jsx";
+import InventoryLowSellingPage from "../pages/shivalik-admin/InventoryLowSellingPage.jsx";
+import InventoryOutEntryPage from "../pages/shivalik-admin/InventoryOutEntryPage.jsx";
 import WarehouseMapPage from "../pages/shivalik-admin/WarehouseMapPage.jsx";
 import EmptyRacksPage from "../pages/shivalik-admin/EmptyRacksPage.jsx";
 
@@ -69,6 +76,14 @@ const BUILT_PAGES = {
   "shivalik-admin:analytics/operational": <AnalyticsOperationalPage />,
   "shivalik-admin:analytics/financial": <AnalyticsFinancialPage />,
   "shivalik-admin:settings": <SettingsPage />,
+  "shivalik-admin:inventory": <InventoryPage />,
+  "shivalik-admin:inventory": <InventoryAllPage />,
+  "shivalik-admin:inventory/in-stock": <InventoryInStockPage />,
+  "shivalik-admin:inventory/low-stock": <InventoryLowStockPage />,
+  "shivalik-admin:inventory/low-selling": <InventoryLowSellingPage />,
+  "shivalik-admin:inventory/in-entry": <InventoryInEntryPage />,
+  "shivalik-admin:inventory/out-entry": <InventoryOutEntryPage />,
+  
   "shivalik-admin:inventory-map/warehouse-map": <WarehouseMapPage />,
   "shivalik-admin:inventory-map/empty-racks": <EmptyRacksPage />,
 };
