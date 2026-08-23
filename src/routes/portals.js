@@ -82,6 +82,18 @@ export const PORTALS = {
           { path: "staff", label: "All Staff", end: true },
           { path: "staff/attendance", label: "Attendance" },
         ],
+      },{
+        path: "inventory",
+        label: "Inventory Overview",
+        icon: "archive",
+        children: [
+          { path: "inventory", label: "All Inventory", end: true },
+          { path: "inventory/in-stock", label: "In Stock" },
+          { path: "inventory/low-stock", label: "Low Stock" },
+          { path: "inventory/low-selling", label: "Low Selling" },
+          { path: "inventory/in-entry", label: "IN Entry" },
+          { path: "inventory/out-entry", label: "OUT Entry" },
+        ],
       },
       { path: "notifications", label: "Notification", icon: "bell", badge: 10 },
       {
