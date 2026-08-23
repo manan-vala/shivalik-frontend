@@ -1,58 +1,79 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth-context.js";
-import { PORTAL_LIST, landingPathForRole } from "../routes/portals.js";
-import Icon from "../components/ui/Icon.jsx";
+import { landingPathForRole } from "../routes/portals.js";
+import { useState } from "react";
 
 /**
- * Dev role switcher - PLACEHOLDER for the real sign-in screen.
- *
- * Lets you jump into any portal without a backend. Replace with the designed
- * LOGIN PAGE (Figma node 1181:89498) once auth exists; the redirect contract
- * (landingPathForRole) stays the same.
+ * Backend sign-in for the staff portal.
  */
 export default function RoleSwitcher() {
-  const { setRole } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function enter(portal) {
-    setRole(portal.role);
-    navigate(landingPathForRole(portal.role), { replace: true });
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const user = await signIn(email, password);
+      const role = user.is_staff || user.role === "ADMIN"
+        ? "shivalik_admin"
+        : "shivalik_admin";
+      navigate(landingPathForRole(role), { replace: true });
+    } catch (err) {
+      setError(err.message || "Unable to sign in.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page p-6">
       <div className="flex w-full max-w-md flex-col gap-6 rounded-lg border border-border-default bg-surface p-8 shadow-sm">
         <div className="flex flex-col gap-1">
-          <h1 className="text-display-xs">Choose a portal</h1>
+          <h1 className="text-display-xs">Sign in to Shivalik</h1>
           <p className="text-sm text-tertiary">
-            Stand-in for sign-in. Pick a role to enter that portal.
+            Use your approved staff account to access the warehouse.
           </p>
         </div>
 
-        <div className="flex flex-col gap-2">
-          {PORTAL_LIST.map((portal) => (
-            <button
-              key={portal.id}
-              type="button"
-              onClick={() => enter(portal)}
-              className="flex items-center justify-between rounded-md border border-border-default px-4 py-3 text-left transition-colors hover:bg-muted"
-            >
-              <span className="flex flex-col">
-                <span className="text-sm font-medium text-primary">
-                  {portal.label}
-                </span>
-                <span className="text-xs text-tertiary">
-                  {portal.basePath} / {portal.shell}
-                </span>
-              </span>
-              <Icon
-                name="chevron-down"
-                size="md"
-                className="-rotate-90 text-placeholder"
-              />
-            </button>
-          ))}
-        </div>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <label className="flex flex-col gap-1 text-sm font-medium text-primary">
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="rounded-md border border-border-default px-3 py-2 font-normal outline-none focus:border-brand"
+              autoComplete="email"
+              required
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-primary">
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="rounded-md border border-border-default px-3 py-2 font-normal outline-none focus:border-brand"
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          {error && <p className="text-sm text-error-500">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+          >
+            {loading ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
       </div>
     </div>
   );

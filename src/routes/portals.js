@@ -109,6 +109,16 @@ export const PORTALS = {
           { path: "analytics/financial", label: "Financial" },
         ],
       },
+      {
+        path: "inventory-map",
+        label: "Inventory Map",
+        icon: "wallet",
+        children: [
+          { path: "inventory-map/warehouse-map", label: "Warehouse Map", end: true },
+          { path: "inventory-map/empty-racks", label: "Empty Racks" },
+          { path: "inventory-map/dead-stock", label: "Dead Stock" },
+        ],
+      },
     ],
     footerNav: [
       {

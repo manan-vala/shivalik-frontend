@@ -25,6 +25,9 @@ import InventoryAllPage from "../pages/shivalik-admin/InventoryAllPage.jsx";
 import InventoryLowStockPage from "../pages/shivalik-admin/InventoryLowStockPage.jsx";
 import InventoryLowSellingPage from "../pages/shivalik-admin/InventoryLowSellingPage.jsx";
 import InventoryOutEntryPage from "../pages/shivalik-admin/InventoryOutEntryPage.jsx";
+import WarehouseMapPage from "../pages/shivalik-admin/WarehouseMapPage.jsx";
+import EmptyRacksPage from "../pages/shivalik-admin/EmptyRacksPage.jsx";
+
 /**
  * Route tree
  * -----------------------------------------------------------------------------
@@ -81,6 +84,8 @@ const BUILT_PAGES = {
   "shivalik-admin:inventory/in-entry": <InventoryInEntryPage />,
   "shivalik-admin:inventory/out-entry": <InventoryOutEntryPage />,
   
+  "shivalik-admin:inventory-map/warehouse-map": <WarehouseMapPage />,
+  "shivalik-admin:inventory-map/empty-racks": <EmptyRacksPage />,
 };
 
 function portalRoute(portal) {
