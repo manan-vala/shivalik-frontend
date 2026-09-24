@@ -3,7 +3,7 @@ import { PORTAL_LIST, flattenNav } from "./portals.js";
 import PortalShell from "../layouts/PortalShell.jsx";
 import RequireRole from "./RequireRole.jsx";
 import Placeholder from "../pages/Placeholder.jsx";
-import RoleSwitcher from "../pages/RoleSwitcher.jsx";
+import SignInPage from "../pages/SignInPage.jsx";
 import RootRedirect from "../pages/RootRedirect.jsx";
 import ClientsPage from "../pages/shivalik-admin/ClientsPage.jsx";
 import DashboardPage from "../pages/shivalik-admin/DashboardPage.jsx";
@@ -36,7 +36,7 @@ import EmptyRacksPage from "../pages/shivalik-admin/EmptyRacksPage.jsx";
  * BUILT_PAGES below; everything else falls back to <Placeholder>.
  *
  *   /                  -> redirect to the signed-in role's landing screen
- *   /login             -> dev role switcher (placeholder for real auth)
+ *   /login             -> staff sign-in (JWT from /api/v1/auth/login/)
  *   /admin/*           Shivalik Admin   (role: shivalik_admin)
  *   /golden/*          Golden Admin     (role: golden_admin)
  *   /vendor/*          Shivalik Vendor  (role: vendor)
@@ -76,14 +76,13 @@ const BUILT_PAGES = {
   "shivalik-admin:analytics/operational": <AnalyticsOperationalPage />,
   "shivalik-admin:analytics/financial": <AnalyticsFinancialPage />,
   "shivalik-admin:settings": <SettingsPage />,
-  "shivalik-admin:inventory": <InventoryPage />,
   "shivalik-admin:inventory": <InventoryAllPage />,
+  "shivalik-admin:inventory/warehouses": <InventoryPage />,
   "shivalik-admin:inventory/in-stock": <InventoryInStockPage />,
   "shivalik-admin:inventory/low-stock": <InventoryLowStockPage />,
   "shivalik-admin:inventory/low-selling": <InventoryLowSellingPage />,
   "shivalik-admin:inventory/in-entry": <InventoryInEntryPage />,
   "shivalik-admin:inventory/out-entry": <InventoryOutEntryPage />,
-  
   "shivalik-admin:inventory-map/warehouse-map": <WarehouseMapPage />,
   "shivalik-admin:inventory-map/empty-racks": <EmptyRacksPage />,
 };
@@ -113,7 +112,7 @@ function portalRoute(portal) {
 
 export const router = createBrowserRouter([
   { path: "/", element: <RootRedirect /> },
-  { path: "/login", element: <RoleSwitcher /> },
+  { path: "/login", element: <SignInPage /> },
   ...PORTAL_LIST.map(portalRoute),
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

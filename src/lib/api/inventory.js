@@ -1,33 +1,142 @@
-import { apiClient } from "./client.js";
+import { apiClient, fetchAll } from "./client.js";
 
 /**
- * Fetch all warehouse sections
- * Endpoint: GET /api/v1/inventory/sections/
+ * Inventory API — `/api/v1/inventory/…`.
+ *
+ * List helpers return every row (`fetchAll` follows DRF's pages), so a screen
+ * never silently stops at the first 25.
  */
-export async function getSections() {
-  return apiClient("/inventory/sections/");
+
+// -- Locations ----------------------------------------------------------------
+
+/** GET warehouses/ */
+export function getWarehouses() {
+  return fetchAll("/inventory/warehouses/");
+}
+
+/** GET sections/ */
+export function getSections() {
+  return fetchAll("/inventory/sections/");
+}
+
+/** GET racks/ */
+export function getRacks() {
+  return fetchAll("/inventory/racks/");
+}
+
+/** "Warehouse / Section / Rack" — the same label the ledger's `rack_location` uses. */
+export function rackLabel(rack) {
+  return `${rack.warehouse_name} / ${rack.section_name} / ${rack.name}`;
+}
+
+// -- Catalog ------------------------------------------------------------------
+
+/** GET books/ — the catalog, stock not included. */
+export function getBooks() {
+  return fetchAll("/inventory/books/");
+}
+
+/** GET books/{id}/ */
+export function getBook(id) {
+  return apiClient(`/inventory/books/${id}/`);
 }
 
 /**
- * Fetch all warehouse racks
- * Endpoint: GET /api/v1/inventory/racks/
+ * The catalog book with exactly this ISBN, or null.
+ *
+ * `?search=` is a case-insensitive *contains* match on title and ISBN, so
+ * the exact match is picked out here.
  */
-export async function getRacks() {
-  return apiClient("/inventory/racks/");
+export async function findBookByIsbn(isbn) {
+  const wanted = isbn.trim();
+  const matches = await fetchAll("/inventory/books/", { params: { search: wanted } });
+  return matches.find((book) => book.isbn === wanted) ?? null;
+}
+
+/** POST books/register/ — `{ title, isbn, mrp, … }` */
+export function registerBook(book) {
+  return apiClient("/inventory/books/register/", { body: book });
+}
+
+// -- Stock ledger ---------------------------------------------------------------
+
+/**
+ * GET books/inventory/ — one row per (book, rack): stock, vendor and the
+ * "Warehouse / Section / Rack" label. A bare list, not paginated.
+ */
+export function getBookInventory() {
+  return fetchAll("/inventory/books/inventory/");
+}
+
+/** GET stock/in-stock/ — books holding stock anywhere, totalled across racks. */
+export function getInStockBooks() {
+  return fetchAll("/inventory/stock/in-stock/");
+}
+
+/** GET stock/low-stock/ — books whose total stock is below `min_stock`. */
+export function getLowStockBooks() {
+  return fetchAll("/inventory/stock/low-stock/");
+}
+
+/** GET stock/low-selling/ — books flagged `low_selling` by sales analytics. */
+export function getLowSellingBooks() {
+  return fetchAll("/inventory/stock/low-selling/");
+}
+
+/** POST books/{id}/stock-in/ — `{ rack, vendor, quantity }` */
+export function stockIn(bookId, { rack, vendor, quantity }) {
+  return apiClient(`/inventory/books/${bookId}/stock-in/`, {
+    body: { rack, vendor, quantity },
+  });
+}
+
+/** POST books/{id}/stock-out/ — `{ rack, vendor, quantity }` */
+export function stockOut(bookId, { rack, vendor, quantity }) {
+  return apiClient(`/inventory/books/${bookId}/stock-out/`, {
+    body: { rack, vendor, quantity },
+  });
 }
 
 /**
- * Fetch complete book inventory ledger records
- * Endpoint: GET /api/v1/inventory/books/inventory/
+ * POST books/{id}/run-campaign/
+ *
+ * The backend route is a published stub (open question Q13): it checks the
+ * book is flagged low-selling and acknowledges. The campaign terms are sent
+ * so the contract is in place when a real runner lands.
  */
-export async function getBookInventory() {
-  return apiClient("/inventory/books/inventory/");
+export function runCampaign(bookId, terms) {
+  return apiClient(`/inventory/books/${bookId}/run-campaign/`, { body: terms });
 }
 
 /**
- * Fetch books in stock
- * Endpoint: GET /api/v1/inventory/stock/in-stock/
+ * Per-book stock totals from the ledger: `Map<bookId, { total, racks }>`,
+ * where `racks` is `[{ rack, rack_location, curr_stock, vendor }]`.
  */
-export async function getInStockBooks() {
-  return apiClient("/inventory/stock/in-stock/");
+export function totalsByBook(ledgerRows) {
+  const totals = new Map();
+  for (const row of ledgerRows) {
+    const entry = totals.get(row.book) ?? { total: 0, racks: [] };
+    entry.total += row.curr_stock;
+    entry.racks.push({
+      rack: row.rack,
+      rack_location: row.rack_location,
+      curr_stock: row.curr_stock,
+      vendor: row.vendor,
+      vendor_name: row.vendor_name,
+    });
+    totals.set(row.book, entry);
+  }
+  return totals;
+}
+
+// -- Vendors & purchase orders ------------------------------------------------
+
+/** GET vendors/active/ — vendors that are not blocked. */
+export function getActiveVendors() {
+  return fetchAll("/inventory/vendors/active/");
+}
+
+/** POST purchase-orders/ */
+export function createPurchaseOrder(order) {
+  return apiClient("/inventory/purchase-orders/", { body: order });
 }
