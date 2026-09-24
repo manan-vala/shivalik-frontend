@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import PageHeader from "../../components/ui/PageHeader.jsx";
+import { useMemo, useState } from "react";
 import {
   TableCard,
   Table,
@@ -9,51 +8,34 @@ import {
   TH,
   TD,
 } from "../../components/ui/Table.jsx";
-import Badge from "../../components/ui/Badge.jsx"; 
+import Alert from "../../components/ui/Alert.jsx";
+import Badge from "../../components/ui/Badge.jsx";
+import { getInStockBooks } from "../../lib/api/inventory.js";
+import { useApiData } from "../../lib/api/use-api-data.js";
+import { coverInitials, stockStatus } from "../../lib/format.js";
 
+/** Titles holding stock anywhere — `stock/in-stock/`, totalled across racks. */
 export default function InventoryInStockPage() {
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: books, loading, error } = useApiData(getInStockBooks, []);
+  const [query, setQuery] = useState("");
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return books;
+    return books.filter(
+      (b) => b.title.toLowerCase().includes(q) || b.isbn.toLowerCase().includes(q)
+    );
+  }, [books, query]);
 
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        // Hitting the joined ledger endpoint instead of just the catalog
-        const response = await fetch(`${API_BASE}/inventory/books/inventory/`);
-        if (!response.ok) throw new Error("Failed to fetch books");
-        
-        const data = await response.json();
-        
-        // Handles both DRF paginated objects and raw arrays safely
-        const booksArray = Array.isArray(data) ? data : (data.results || []);
-        
-        console.log("Safely parsed book data:", booksArray);
-        setBooks(booksArray);
-      } catch (err) {
-        console.error("Error fetching books:", err);
-        setError("Could not load book data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBooks();
-  }, []);
-
-  // Calculate only the items actually in stock for the top dashboard badge
-  const inStockCount = books.filter(b => (b.curr_stock || 0) > 0).length;
+  const healthyCount = books.filter((b) => b.curr_stock >= b.min_stock).length;
 
   return (
     <div className="flex flex-col gap-8 px-8 py-8">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">In Stock</h1>
-        <p className="text-sm text-gray-500 mt-1">Titles with available quantity above minimum threshold.</p>
+        <p className="text-sm text-gray-500 mt-1">Titles with stock available in at least one rack.</p>
       </div>
 
-      {/* Alert Card from Mockup */}
       <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-6">
         <div className="flex items-center gap-4">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-600">
@@ -61,22 +43,26 @@ export default function InventoryInStockPage() {
           </div>
           <div>
             <h3 className="font-semibold text-green-900">Healthy Stock Levels</h3>
-            <p className="text-sm text-green-700">All items below are above minimum threshold and ready for fulfillment</p>
+            <p className="text-sm text-green-700">
+              {healthyCount} of {books.length} titles are at or above their minimum threshold
+            </p>
           </div>
         </div>
         <div className="text-right">
-          <span className="block text-3xl font-bold text-green-600">{inStockCount}</span>
+          <span className="block text-3xl font-bold text-green-600" data-testid="in-stock-count">{books.length}</span>
           <span className="text-sm text-green-700">Titles in stock</span>
         </div>
       </div>
 
-      {/* Search Input */}
       <div className="max-w-md mx-auto w-full">
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          <input 
-            type="text" 
-            placeholder="Search in-stock items..." 
+          <input
+            type="search"
+            placeholder="Search in-stock items..."
+            aria-label="Search in-stock items"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
@@ -84,7 +70,7 @@ export default function InventoryInStockPage() {
 
       <section className="flex flex-col gap-4">
         {error ? (
-          <div className="text-red-500 p-4 border border-red-200 rounded bg-red-50">{error}</div>
+          <Alert tone="error">Could not load stock levels: {error.message}</Alert>
         ) : (
           <TableCard>
             <Table>
@@ -95,53 +81,44 @@ export default function InventoryInStockPage() {
                   <TH width={150}>ISBN</TH>
                   <TH width={120}>Qty Available</TH>
                   <TH width={120}>Reorder Level</TH>
-                  <TH width={150}>Zone</TH>
-                  <TH width={120}>Last Updated</TH>
+                  <TH width={200}>Zone</TH>
                   <TH width={100} align="right">Status</TH>
                 </TR>
               </THead>
               <TBody>
                 {loading ? (
                   <TR>
-                    <TD colSpan={8} align="center" className="text-gray-500 py-8">
+                    <TD colSpan={7} align="center" className="text-gray-500 py-8">
                       Loading stock levels...
                     </TD>
                   </TR>
-                ) : books.length === 0 ? (
+                ) : visible.length === 0 ? (
                   <TR>
-                    <TD colSpan={8} align="center" className="text-gray-500 py-8">
+                    <TD colSpan={7} align="center" className="text-gray-500 py-8">
                       No books found.
                     </TD>
                   </TR>
                 ) : (
-                  books.map((book) => {
-                    const stock = book.curr_stock || 0;
+                  visible.map((book) => {
+                    const status = stockStatus(book.curr_stock, book.min_stock);
+                    const zones = book.racks.filter((r) => r.curr_stock > 0);
                     return (
                       <TR key={book.id}>
                         <TD>
                           <div className="w-8 h-8 rounded bg-[#1c2c4c] text-white flex items-center justify-center text-xs font-bold">
-                            {book.book_title ? book.book_title.substring(0, 2).toUpperCase() : 'BK'}
+                            {coverInitials(book.title)}
                           </div>
                         </TD>
-                        <TD>
-                          <div className="font-medium text-gray-900">{book.book_title || "Unknown Title"}</div>
-                          <div className="text-sm text-gray-500">{book.author || "Unknown Author"}</div>
-                        </TD>
+                        <TD className="font-medium text-gray-900">{book.title}</TD>
                         <TD className="text-gray-600">{book.isbn}</TD>
-                        <TD className="font-semibold text-green-600">{stock}</TD>
-                        <TD className="text-gray-600">{book.reorder_level || 50}</TD>
-                        {/* Truncating Zone name to fit cleanly, adding hover title */}
-                        <TD className="text-gray-600 truncate max-w-[150px]" title={book.rack_location || "Unassigned"}>
-                          {book.rack_location || "Unassigned"}
-                        </TD>
-                        <TD className="text-gray-600">
-                          {book.updated_at ? new Date(book.updated_at).toLocaleDateString() : "-"}
+                        <TD className="font-semibold text-green-600">{book.curr_stock}</TD>
+                        <TD className="text-gray-600">{book.min_stock}</TD>
+                        <TD className="text-gray-600 truncate max-w-[200px]" title={zones.map((r) => `${r.rack_location}: ${r.curr_stock}`).join("\n")}>
+                          {zones.length === 1 ? zones[0].rack_location : `${zones.length} racks`}
                         </TD>
                         <TD>
                           <div className="flex justify-end">
-                            <Badge tone={stock > 0 ? "success" : "critical"}>
-                              {stock > 0 ? "In Stock" : "Out of Stock"}
-                            </Badge>
+                            <Badge tone={status.tone}>{status.label}</Badge>
                           </div>
                         </TD>
                       </TR>

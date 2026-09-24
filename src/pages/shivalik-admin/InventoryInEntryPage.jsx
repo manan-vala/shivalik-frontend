@@ -1,137 +1,180 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Card from "../../components/ui/Card.jsx";
 import { TableCard, Table, THead, TBody, TR, TH, TD } from "../../components/ui/Table.jsx";
+import Alert from "../../components/ui/Alert.jsx";
 import Button from "../../components/ui/Button.jsx";
+import {
+  findBookByIsbn,
+  getActiveVendors,
+  getRacks,
+  rackLabel,
+  registerBook,
+  stockIn,
+} from "../../lib/api/inventory.js";
+import { useApiData } from "../../lib/api/use-api-data.js";
+import { coverInitials, formatINR } from "../../lib/format.js";
+
+/**
+ * IN Entry — stock received from a vendor.
+ *
+ * Each line is one title onto one rack. A title already in the catalog is
+ * found by ISBN; a new one is registered first (title + ISBN + MRP), then the
+ * units are booked in with `books/{id}/stock-in/`.
+ *
+ * The backend has no batch stock-in, so lines are sent one at a time, in
+ * order. If one is refused, the lines before it are already booked: they are
+ * taken off the form so a retry cannot book them twice, and the refused line
+ * stays with the error.
+ */
+
+async function loadFormData() {
+  const [vendors, racks] = await Promise.all([getActiveVendors(), getRacks()]);
+  return { vendors, racks: racks.filter((r) => r.is_active) };
+}
+
+let nextKey = 1;
+function emptyLine() {
+  return { key: nextKey++, isbn: "", lookup: "idle", book: null, title: "", mrp: "", qty: "", rack: "" };
+}
 
 export default function InventoryInEntryPage() {
-  // 1. Vendor Form State
-  const [vendorData, setVendorData] = useState({
-    name: "",
-    invoice: "",
-    date: "",
-    challan: "",
-    notes: ""
-  });
+  const { data, loading, error } = useApiData(loadFormData, { vendors: [], racks: [] });
+  const { vendors, racks } = data;
 
-  // 2. Dynamic Line Items State (Now includes 'title')
-  const [lineItems, setLineItems] = useState([
-    { id: 1, title: "", isbn: "", category: "", qty: 0, mrp: 0, buyPrice: 0, sellPrice: 0 }
-  ]);
+  const [vendorId, setVendorId] = useState("");
+  const [lines, setLines] = useState(() => [emptyLine()]);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null); // { tone, message }
 
-  // Add a new empty row
-  const addRow = () => {
-    setLineItems([
-      ...lineItems, 
-      { id: Date.now(), title: "", isbn: "", category: "", qty: 0, mrp: 0, buyPrice: 0, sellPrice: 0 }
-    ]);
-  };
+  const vendor = vendors.find((v) => String(v.id) === vendorId);
 
-  // Remove a row (ensure at least 1 remains)
-  const removeRow = (idToRemove) => {
-    if (lineItems.length > 1) {
-      setLineItems(lineItems.filter(item => item.id !== idToRemove));
+  // `patch` is an object, or a function of the row as it is *now* — for
+  // results that land after the user may have kept typing.
+  const updateLine = (key, patch) =>
+    setLines((current) =>
+      current.map((line) =>
+        line.key === key ? { ...line, ...(typeof patch === "function" ? patch(line) : patch) } : line
+      )
+    );
+
+  const addRow = () => setLines((current) => [...current, emptyLine()]);
+
+  const removeRow = (key) =>
+    setLines((current) => (current.length > 1 ? current.filter((line) => line.key !== key) : current));
+
+  // Look the ISBN up in the catalog as soon as it is entered, so the row
+  // shows whether this is a known title or a new one to register.
+  const lookUpIsbn = async (line) => {
+    const isbn = line.isbn.trim();
+    if (!isbn || (line.book && line.book.isbn === isbn)) return;
+
+    updateLine(line.key, { lookup: "checking", book: null });
+    // Applied to the row as it is when the answer arrives — the user may have
+    // picked a rack meanwhile (keep it), or changed the ISBN (drop the answer).
+    const settle = (patch) =>
+      updateLine(line.key, (current) => (current.isbn.trim() === isbn ? patch(current) : {}));
+
+    try {
+      const book = await findBookByIsbn(isbn);
+      if (book) {
+        settle((current) => ({
+          lookup: "found",
+          book,
+          title: book.title,
+          mrp: book.mrp ?? "",
+          rack: current.rack || (book.default_rack ? String(book.default_rack) : ""),
+        }));
+      } else {
+        settle(() => ({ lookup: "new", book: null }));
+      }
+    } catch (err) {
+      settle(() => ({ lookup: "error", book: null }));
+      setResult({ tone: "error", message: `Could not look up ISBN ${isbn}: ${err.message}` });
     }
   };
 
-  // Update a specific field in a specific row
-  const updateRow = (id, field, value) => {
-    setLineItems(lineItems.map(item => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    }));
-  };
-
-  // 3. Auto-calculated Summary Math
   const summary = useMemo(() => {
-    let totalQty = 0;
-    let totalPurchaseValue = 0;
-    let totalSellingValue = 0;
+    let units = 0;
+    let value = 0;
+    for (const line of lines) {
+      const qty = Number(line.qty) || 0;
+      units += qty;
+      value += qty * (Number(line.mrp) || 0);
+    }
+    return { units, value };
+  }, [lines]);
 
-    lineItems.forEach(item => {
-      const q = Number(item.qty) || 0;
-      const bp = Number(item.buyPrice) || 0;
-      const sp = Number(item.sellPrice) || 0;
+  function validate() {
+    if (!vendorId) return "Choose the vendor this delivery came from.";
+    for (const [index, line] of lines.entries()) {
+      const label = `Line ${index + 1}`;
+      const qty = Number(line.qty);
+      if (!line.isbn.trim()) return `${label}: enter an ISBN.`;
+      if (!Number.isInteger(qty) || qty < 1) return `${label}: quantity must be a whole number of at least 1.`;
+      if (!line.rack) return `${label}: choose the rack the books go on.`;
+      if (!line.book) {
+        if (!line.title.trim()) return `${label}: a new title needs a book name.`;
+        if (line.mrp === "" || Number(line.mrp) < 0) return `${label}: a new title needs an MRP.`;
+      }
+    }
+    return null;
+  }
 
-      totalQty += q;
-      totalPurchaseValue += (q * bp);
-      totalSellingValue += (q * sp);
-    });
-
-    const expectedMargin = totalSellingValue > 0 
-      ? (((totalSellingValue - totalPurchaseValue) / totalSellingValue) * 100).toFixed(1)
-      : 0.0;
-
-    return { totalQty, totalPurchaseValue, totalSellingValue, expectedMargin };
-  }, [lineItems]);
-
-  // 4. Submit Data to Django
   const handleSubmit = async () => {
-    if (lineItems.length === 0 || !lineItems[0].isbn || !lineItems[0].title) {
-      alert("Please add at least one valid book with a Title and ISBN.");
+    const problem = validate();
+    if (problem) {
+      setResult({ tone: "error", message: problem });
       return;
     }
 
-    try {
-      const submitPromises = lineItems.map(async (item) => {
-        // STEP 1: Register the Book Profile
-        const bookPayload = {
-          title: item.title, 
-          isbn: item.isbn,
-          mrp: Number(item.mrp),
-          buy_price: Number(item.buyPrice),
-          sell_price: Number(item.sellPrice)
-        };
+    setSubmitting(true);
+    setResult(null);
+    const booked = [];
 
-        const bookResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'}/inventory/books/register/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bookPayload),
+    for (const [index, line] of lines.entries()) {
+      const isbn = line.isbn.trim();
+      try {
+        // Resolve at submit time too: the ISBN may have been typed without
+        // leaving the field, or registered by someone else since.
+        let book = line.book ?? (await findBookByIsbn(isbn));
+        if (!book) {
+          book = await registerBook({ title: line.title.trim(), isbn, mrp: line.mrp });
+        }
+        await stockIn(book.id, {
+          rack: Number(line.rack),
+          vendor: Number(vendorId),
+          quantity: Number(line.qty),
         });
-
-        if (!bookResponse.ok) {
-          throw new Error(JSON.stringify(await bookResponse.json()));
-        }
-        
-        const createdBook = await bookResponse.json();
-
-        // STEP 2: Record the Stock-In Transaction
-        if (Number(item.qty) > 0) {
-          const stockPayload = {
-            quantity: Number(item.qty),
-            notes: `Received from ${vendorData.name}`,
-            rack: 1,   // <-- Added default Rack ID
-            vendor: 1  // <-- Added default Vendor ID
-          };
-          
-          const stockResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'}/inventory/books/${createdBook.id}/stock-in/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(stockPayload),
-          });
-          // --- NEW: CATCH EXACT STOCK-IN ERROR ---
-          if (!stockResponse.ok) {
-            const stockError = await stockResponse.json();
-            console.error(`Stock-in failed for ${item.title}:`, stockError);
-            throw new Error(`Stock-in rejected: ${JSON.stringify(stockError)}`);
-          }
-        }
-        
-        return createdBook;
-      });
-
-      await Promise.all(submitPromises);
-
-      alert("Inventory successfully added and stocked!");
-      setVendorData({ name: "", invoice: "", date: "", challan: "", notes: "" });
-      setLineItems([{ id: 1, title: "", isbn: "", category: "", qty: 0, mrp: 0, buyPrice: 0, sellPrice: 0 }]);
-      
-    } catch (error) {
-      console.error("Submission error:", error);
-      alert(`Backend Error: ${error.message}`);
+        booked.push({ key: line.key, title: book.title, qty: Number(line.qty) });
+      } catch (err) {
+        const bookedKeys = new Set(booked.map((b) => b.key));
+        setLines((current) => current.filter((l) => !bookedKeys.has(l.key)));
+        const saved = booked.length
+          ? ` ${booked.length} line(s) before it were booked in and removed from the form.`
+          : "";
+        setResult({
+          tone: "error",
+          message: `Line ${index + 1} (ISBN ${isbn}) was not booked in: ${err.message}${saved}`,
+        });
+        setSubmitting(false);
+        return;
+      }
     }
+
+    const units = booked.reduce((sum, b) => sum + b.qty, 0);
+    setResult({
+      tone: "success",
+      message: `Booked in ${units} units across ${booked.length} title(s) from ${vendor.company_name}.`,
+    });
+    setLines([emptyLine()]);
+    setSubmitting(false);
+  };
+
+  const handleCancel = () => {
+    setVendorId("");
+    setLines([emptyLine()]);
+    setResult(null);
   };
 
   return (
@@ -141,61 +184,37 @@ export default function InventoryInEntryPage() {
         <p className="text-sm text-gray-500 mt-1">Record incoming stock received from vendors.</p>
       </div>
 
-      {/* Vendor Information Card */}
+      {error && <Alert tone="error">Could not load vendors and racks: {error.message}</Alert>}
+
       <Card title="Vendor Information">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Vendor Name *</label>
-            <input 
-              type="text" 
-              placeholder="Search vendors..." 
-              className="border rounded p-2 focus:ring-2 focus:ring-primary/50" 
-              value={vendorData.name}
-              onChange={(e) => setVendorData({...vendorData, name: e.target.value})}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Vendor Invoice Number *</label>
-            <input 
-              type="text" 
-              placeholder="e.g., INV-2026-001234" 
-              className="border rounded p-2 focus:ring-2 focus:ring-primary/50"
-              value={vendorData.invoice}
-              onChange={(e) => setVendorData({...vendorData, invoice: e.target.value})}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Delivery Date *</label>
-            <input 
-              type="date" 
-              className="border rounded p-2 focus:ring-2 focus:ring-primary/50"
-              value={vendorData.date}
-              onChange={(e) => setVendorData({...vendorData, date: e.target.value})}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Delivery Challan Number</label>
-            <input 
-              type="text" 
-              placeholder="e.g., DC-2026-5678" 
-              className="border rounded p-2 focus:ring-2 focus:ring-primary/50"
-              value={vendorData.challan}
-              onChange={(e) => setVendorData({...vendorData, challan: e.target.value})}
-            />
-          </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-sm font-medium text-gray-700">Purchase Notes</label>
-            <textarea 
-              placeholder="Optional notes about this purchase..." 
-              className="border rounded p-2 focus:ring-2 focus:ring-primary/50 h-24"
-              value={vendorData.notes}
-              onChange={(e) => setVendorData({...vendorData, notes: e.target.value})}
-            />
-          </div>
+          <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+            Vendor Name *
+            <select
+              className="border rounded p-2 font-normal bg-white focus:ring-2 focus:ring-primary/50"
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">{loading ? "Loading vendors..." : "Select vendor..."}</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>{v.company_name}</option>
+              ))}
+            </select>
+          </label>
+          {vendor && (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm self-end">
+              <dt className="text-gray-500">Contact</dt>
+              <dd className="text-gray-900">{vendor.contact_person || vendor.vendor_name}</dd>
+              <dt className="text-gray-500">GSTIN</dt>
+              <dd className="text-gray-900">{vendor.gst_number}</dd>
+              <dt className="text-gray-500">Payment terms</dt>
+              <dd className="text-gray-900">{vendor.payment_terms || "—"}</dd>
+            </dl>
+          )}
         </div>
       </Card>
 
-      {/* Books Received Dynamic Table */}
       <section className="flex flex-col gap-4">
         <div className="flex justify-between items-center bg-white p-4 rounded-t-lg border border-b-0">
           <h2 className="text-lg font-medium text-gray-900">Books Received</h2>
@@ -207,55 +226,108 @@ export default function InventoryInEntryPage() {
               <THead>
                 <TR>
                   <TH width={60}>Cover</TH>
-                  <TH width={200}>Book Name</TH>
-                  <TH width={150}>ISBN</TH>
-                  <TH width={100}>Qty</TH>
-                  <TH width={120}>MRP</TH>
-                  <TH width={120}>Buy Price</TH>
-                  <TH width={120}>Sell Price</TH>
-                  <TH width={100}>Margin%</TH>
+                  <TH width={170}>ISBN</TH>
+                  <TH width={240}>Book Name</TH>
+                  <TH width={110}>MRP</TH>
+                  <TH width={90}>Qty</TH>
+                  <TH width={240}>Rack</TH>
                   <TH width={60} align="center">Action</TH>
                 </TR>
               </THead>
               <TBody>
-                {lineItems.map((item) => {
-                  const margin = item.sellPrice > 0 
-                    ? (((item.sellPrice - item.buyPrice) / item.sellPrice) * 100).toFixed(1) 
-                    : "0.0";
-                  
+                {lines.map((line, index) => {
+                  const known = line.lookup === "found";
                   return (
-                    <TR key={item.id}>
+                    <TR key={line.key} data-testid={`in-line-${index + 1}`}>
                       <TD>
                         <div className="w-8 h-8 rounded bg-[#1c2c4c] text-white flex items-center justify-center text-xs font-bold">
-                          {item.title ? item.title.substring(0, 2).toUpperCase() : '?'}
+                          {line.title ? coverInitials(line.title) : "?"}
                         </div>
                       </TD>
                       <TD>
-                        <input type="text" placeholder="Title..." className="w-full border rounded p-1" value={item.title} onChange={(e) => updateRow(item.id, "title", e.target.value)} />
+                        <input
+                          type="text"
+                          placeholder="ISBN"
+                          aria-label={`ISBN, line ${index + 1}`}
+                          className="w-full border rounded p-1"
+                          maxLength={20}
+                          value={line.isbn}
+                          onChange={(e) => {
+                            const isbn = e.target.value;
+                            // A different ISBN is a different book: drop what
+                            // the catalog filled in for the old one.
+                            updateLine(line.key, (current) => ({
+                              isbn,
+                              lookup: "idle",
+                              book: null,
+                              ...(current.book ? { title: "", mrp: "" } : {}),
+                            }));
+                          }}
+                          onBlur={() => lookUpIsbn(line)}
+                        />
+                        <div className="text-xs mt-1 h-4 text-gray-500">
+                          {line.lookup === "checking" && "Checking catalog..."}
+                          {line.lookup === "found" && <span className="text-green-700">In catalog</span>}
+                          {line.lookup === "new" && <span className="text-blue-700">New title — will be registered</span>}
+                        </div>
                       </TD>
                       <TD>
-                        <input type="text" placeholder="ISBN" className="w-full border rounded p-1" value={item.isbn} onChange={(e) => updateRow(item.id, "isbn", e.target.value)} />
+                        <input
+                          type="text"
+                          placeholder="Title..."
+                          aria-label={`Book name, line ${index + 1}`}
+                          className="w-full border rounded p-1 read-only:bg-gray-50"
+                          value={line.title}
+                          readOnly={known}
+                          onChange={(e) => updateLine(line.key, { title: e.target.value })}
+                        />
                       </TD>
                       <TD>
-                        <input type="number" min="0" className="w-full border rounded p-1" value={item.qty} onChange={(e) => updateRow(item.id, "qty", e.target.value)} />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          aria-label={`MRP, line ${index + 1}`}
+                          className="w-full border rounded p-1 read-only:bg-gray-50"
+                          value={line.mrp}
+                          readOnly={known}
+                          onChange={(e) => updateLine(line.key, { mrp: e.target.value })}
+                        />
                       </TD>
                       <TD>
-                        <input type="number" min="0" className="w-full border rounded p-1" value={item.mrp} onChange={(e) => updateRow(item.id, "mrp", e.target.value)} />
+                        <input
+                          type="number"
+                          min="1"
+                          aria-label={`Quantity, line ${index + 1}`}
+                          className="w-full border rounded p-1"
+                          value={line.qty}
+                          onChange={(e) => updateLine(line.key, { qty: e.target.value })}
+                        />
                       </TD>
                       <TD>
-                        <input type="number" min="0" className="w-full border rounded p-1 bg-blue-50" value={item.buyPrice} onChange={(e) => updateRow(item.id, "buyPrice", e.target.value)} />
-                      </TD>
-                      <TD>
-                        <input type="number" min="0" className="w-full border rounded p-1 bg-blue-50" value={item.sellPrice} onChange={(e) => updateRow(item.id, "sellPrice", e.target.value)} />
-                      </TD>
-                      <TD>
-                        <span className={`font-medium ${margin < 0 ? 'text-red-500' : 'text-green-600'}`}>{margin}%</span>
+                        <select
+                          aria-label={`Rack, line ${index + 1}`}
+                          className="w-full border rounded p-1 bg-white"
+                          value={line.rack}
+                          onChange={(e) => updateLine(line.key, { rack: e.target.value })}
+                        >
+                          <option value="">Select rack...</option>
+                          {racks.map((r) => (
+                            <option key={r.id} value={r.id}>{rackLabel(r)}</option>
+                          ))}
+                        </select>
                       </TD>
                       <TD align="center">
-                        <button onClick={() => removeRow(item.id)} className="text-red-500 hover:text-red-700 font-bold p-2">✕</button>
+                        <button
+                          onClick={() => removeRow(line.key)}
+                          className="text-red-500 hover:text-red-700 font-bold p-2"
+                          aria-label={`Remove line ${index + 1}`}
+                        >
+                          ✕
+                        </button>
                       </TD>
                     </TR>
-                  )
+                  );
                 })}
               </TBody>
             </Table>
@@ -263,33 +335,31 @@ export default function InventoryInEntryPage() {
         </div>
       </section>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <div className="border bg-white rounded-lg p-6 flex flex-col gap-2">
           <span className="text-sm text-gray-500 font-medium">Total Books</span>
-          <span className="text-3xl font-bold">{lineItems.length}</span>
-          <span className="text-xs text-gray-400">{summary.totalQty} total units</span>
+          <span className="text-3xl font-bold">{lines.length}</span>
+          <span className="text-xs text-gray-400">Titles on this entry</span>
         </div>
         <div className="border bg-white rounded-lg p-6 flex flex-col gap-2">
-          <span className="text-sm text-gray-500 font-medium">Purchase Value</span>
-          <span className="text-3xl font-bold">₹{summary.totalPurchaseValue.toLocaleString()}</span>
-          <span className="text-xs text-gray-400">Total cost</span>
+          <span className="text-sm text-gray-500 font-medium">Total Units</span>
+          <span className="text-3xl font-bold">{summary.units}</span>
+          <span className="text-xs text-gray-400">Copies received</span>
         </div>
         <div className="border bg-white rounded-lg p-6 flex flex-col gap-2">
-          <span className="text-sm text-gray-500 font-medium">Selling Value</span>
-          <span className="text-3xl font-bold">₹{summary.totalSellingValue.toLocaleString()}</span>
-          <span className="text-xs text-gray-400">Potential revenue</span>
-        </div>
-        <div className="border bg-white rounded-lg p-6 flex flex-col gap-2">
-          <span className="text-sm text-gray-500 font-medium">Expected Margin</span>
-          <span className="text-3xl font-bold text-red-500">{summary.expectedMargin}%</span>
-          <span className="text-xs text-gray-400">Profit margin</span>
+          <span className="text-sm text-gray-500 font-medium">Value at MRP</span>
+          <span className="text-3xl font-bold">{formatINR(summary.value)}</span>
+          <span className="text-xs text-gray-400">Units × MRP</span>
         </div>
       </div>
 
+      {result && <Alert tone={result.tone}>{result.message}</Alert>}
+
       <div className="flex justify-end gap-4 pb-8">
-        <Button variant="secondary">Cancel</Button>
-        <Button variant="primary" onClick={handleSubmit}>Add To Inventory</Button>
+        <Button variant="secondary" onClick={handleCancel} disabled={submitting}>Cancel</Button>
+        <Button variant="primary" onClick={handleSubmit} disabled={submitting || loading}>
+          {submitting ? "Adding..." : "Add To Inventory"}
+        </Button>
       </div>
     </div>
   );
