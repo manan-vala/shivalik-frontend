@@ -18,6 +18,15 @@ test("lists titles below their minimum, from stock/low-stock/", async ({ page })
   await expect(row(page, "E2E Slow Seller")).toHaveCount(0);
 });
 
+test("an emptied rack is not shown as a location, but its supplier still is", async ({ page }) => {
+  await page.goto("/admin/inventory/low-stock");
+
+  const cleared = row(page, "E2E Cleared Title");
+  await expect(cleared.getByRole("cell").nth(2)).toHaveText("0");
+  await expect(cleared.getByRole("cell").nth(5)).toHaveText("Penguin Distributors");
+  await expect(cleared.getByRole("cell").nth(6)).toHaveText("—");
+});
+
 test("a reorder creates a draft purchase order for that title", async ({ page, request }) => {
   await page.goto("/admin/inventory/low-stock");
   await page.getByRole("button", { name: "Create reorder for E2E Low Stock Atlas" }).click();

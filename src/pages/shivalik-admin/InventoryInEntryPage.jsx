@@ -105,9 +105,27 @@ export default function InventoryInEntryPage() {
     return { units, value };
   }, [lines]);
 
-  function validate() {
-    if (!vendorId) return "Choose the vendor this delivery came from.";
-    for (const [index, line] of lines.entries()) {
+  /**
+   * Every line checked against the catalog *now*. A lookup started on blur
+   * may still be in flight — clicking "Add To Inventory" straight from the
+   * ISBN field blurs it — so validation cannot trust `line.book` alone, or
+   * it would ask for a name and MRP for a title the catalog already has.
+   */
+  async function resolveLines(current) {
+    return Promise.all(
+      current.map(async (line) => {
+        const isbn = line.isbn.trim();
+        if (!isbn) return line;
+        const book = line.book?.isbn === isbn ? line.book : await findBookByIsbn(isbn);
+        return book
+          ? { ...line, lookup: "found", book, title: book.title, mrp: book.mrp ?? "" }
+          : { ...line, lookup: "new", book: null };
+      })
+    );
+  }
+
+  function validate(resolved) {
+    for (const [index, line] of resolved.entries()) {
       const label = `Line ${index + 1}`;
       const qty = Number(line.qty);
       if (!line.isbn.trim()) return `${label}: enter an ISBN.`;
@@ -122,24 +140,45 @@ export default function InventoryInEntryPage() {
   }
 
   const handleSubmit = async () => {
-    const problem = validate();
-    if (problem) {
-      setResult({ tone: "error", message: problem });
+    if (!vendorId) {
+      setResult({ tone: "error", message: "Choose the vendor this delivery came from." });
       return;
     }
 
     setSubmitting(true);
     setResult(null);
-    const booked = [];
 
-    for (const [index, line] of lines.entries()) {
+    let resolved;
+    try {
+      resolved = await resolveLines(lines);
+    } catch (err) {
+      setResult({ tone: "error", message: `Could not check the catalog: ${err.message}` });
+      setSubmitting(false);
+      return;
+    }
+    // Show what the catalog said, whether or not the entry goes ahead.
+    const byKey = new Map(resolved.map((line) => [line.key, line]));
+    setLines((current) => current.map((line) => byKey.get(line.key) ?? line));
+
+    const problem = validate(resolved);
+    if (problem) {
+      setResult({ tone: "error", message: problem });
+      setSubmitting(false);
+      return;
+    }
+
+    const booked = [];
+    // Titles registered by this entry, so a second line with the same new
+    // ISBN stocks that book instead of trying to register it again.
+    const registered = new Map();
+
+    for (const [index, line] of resolved.entries()) {
       const isbn = line.isbn.trim();
       try {
-        // Resolve at submit time too: the ISBN may have been typed without
-        // leaving the field, or registered by someone else since.
-        let book = line.book ?? (await findBookByIsbn(isbn));
+        let book = line.book ?? registered.get(isbn);
         if (!book) {
           book = await registerBook({ title: line.title.trim(), isbn, mrp: line.mrp });
+          registered.set(isbn, book);
         }
         await stockIn(book.id, {
           rack: Number(line.rack),
@@ -167,7 +206,11 @@ export default function InventoryInEntryPage() {
       tone: "success",
       message: `Booked in ${units} units across ${booked.length} title(s) from ${vendor.company_name}.`,
     });
-    setLines([emptyLine()]);
+    const bookedKeys = new Set(booked.map((b) => b.key));
+    setLines((current) => {
+      const rest = current.filter((l) => !bookedKeys.has(l.key));
+      return rest.length ? rest : [emptyLine()];
+    });
     setSubmitting(false);
   };
 
@@ -186,154 +229,157 @@ export default function InventoryInEntryPage() {
 
       {error && <Alert tone="error">Could not load vendors and racks: {error.message}</Alert>}
 
-      <Card title="Vendor Information">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-          <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-            Vendor Name *
-            <select
-              className="border rounded p-2 font-normal bg-white focus:ring-2 focus:ring-primary/50"
-              value={vendorId}
-              onChange={(e) => setVendorId(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">{loading ? "Loading vendors..." : "Select vendor..."}</option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>{v.company_name}</option>
-              ))}
-            </select>
-          </label>
-          {vendor && (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm self-end">
-              <dt className="text-gray-500">Contact</dt>
-              <dd className="text-gray-900">{vendor.contact_person || vendor.vendor_name}</dd>
-              <dt className="text-gray-500">GSTIN</dt>
-              <dd className="text-gray-900">{vendor.gst_number}</dd>
-              <dt className="text-gray-500">Payment terms</dt>
-              <dd className="text-gray-900">{vendor.payment_terms || "—"}</dd>
-            </dl>
-          )}
-        </div>
-      </Card>
+      {/* Frozen while saving: the lines being sent must not change underneath. */}
+      <fieldset disabled={submitting} className="contents">
+        <Card title="Vendor Information">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
+            <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+              Vendor Name *
+              <select
+                className="border rounded p-2 font-normal bg-white focus:ring-2 focus:ring-primary/50"
+                value={vendorId}
+                onChange={(e) => setVendorId(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">{loading ? "Loading vendors..." : "Select vendor..."}</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>{v.company_name}</option>
+                ))}
+              </select>
+            </label>
+            {vendor && (
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm self-end">
+                <dt className="text-gray-500">Contact</dt>
+                <dd className="text-gray-900">{vendor.contact_person || vendor.vendor_name}</dd>
+                <dt className="text-gray-500">GSTIN</dt>
+                <dd className="text-gray-900">{vendor.gst_number}</dd>
+                <dt className="text-gray-500">Payment terms</dt>
+                <dd className="text-gray-900">{vendor.payment_terms || "—"}</dd>
+              </dl>
+            )}
+          </div>
+        </Card>
 
-      <section className="flex flex-col gap-4">
-        <div className="flex justify-between items-center bg-white p-4 rounded-t-lg border border-b-0">
-          <h2 className="text-lg font-medium text-gray-900">Books Received</h2>
-          <Button variant="primary" iconLeading="plus" onClick={addRow}>Add Book</Button>
-        </div>
-        <div className="mt-[-16px]">
-          <TableCard>
-            <Table>
-              <THead>
-                <TR>
-                  <TH width={60}>Cover</TH>
-                  <TH width={170}>ISBN</TH>
-                  <TH width={240}>Book Name</TH>
-                  <TH width={110}>MRP</TH>
-                  <TH width={90}>Qty</TH>
-                  <TH width={240}>Rack</TH>
-                  <TH width={60} align="center">Action</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {lines.map((line, index) => {
-                  const known = line.lookup === "found";
-                  return (
-                    <TR key={line.key} data-testid={`in-line-${index + 1}`}>
-                      <TD>
-                        <div className="w-8 h-8 rounded bg-[#1c2c4c] text-white flex items-center justify-center text-xs font-bold">
-                          {line.title ? coverInitials(line.title) : "?"}
-                        </div>
-                      </TD>
-                      <TD>
-                        <input
-                          type="text"
-                          placeholder="ISBN"
-                          aria-label={`ISBN, line ${index + 1}`}
-                          className="w-full border rounded p-1"
-                          maxLength={20}
-                          value={line.isbn}
-                          onChange={(e) => {
-                            const isbn = e.target.value;
-                            // A different ISBN is a different book: drop what
-                            // the catalog filled in for the old one.
-                            updateLine(line.key, (current) => ({
-                              isbn,
-                              lookup: "idle",
-                              book: null,
-                              ...(current.book ? { title: "", mrp: "" } : {}),
-                            }));
-                          }}
-                          onBlur={() => lookUpIsbn(line)}
-                        />
-                        <div className="text-xs mt-1 h-4 text-gray-500">
-                          {line.lookup === "checking" && "Checking catalog..."}
-                          {line.lookup === "found" && <span className="text-green-700">In catalog</span>}
-                          {line.lookup === "new" && <span className="text-blue-700">New title — will be registered</span>}
-                        </div>
-                      </TD>
-                      <TD>
-                        <input
-                          type="text"
-                          placeholder="Title..."
-                          aria-label={`Book name, line ${index + 1}`}
-                          className="w-full border rounded p-1 read-only:bg-gray-50"
-                          value={line.title}
-                          readOnly={known}
-                          onChange={(e) => updateLine(line.key, { title: e.target.value })}
-                        />
-                      </TD>
-                      <TD>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          aria-label={`MRP, line ${index + 1}`}
-                          className="w-full border rounded p-1 read-only:bg-gray-50"
-                          value={line.mrp}
-                          readOnly={known}
-                          onChange={(e) => updateLine(line.key, { mrp: e.target.value })}
-                        />
-                      </TD>
-                      <TD>
-                        <input
-                          type="number"
-                          min="1"
-                          aria-label={`Quantity, line ${index + 1}`}
-                          className="w-full border rounded p-1"
-                          value={line.qty}
-                          onChange={(e) => updateLine(line.key, { qty: e.target.value })}
-                        />
-                      </TD>
-                      <TD>
-                        <select
-                          aria-label={`Rack, line ${index + 1}`}
-                          className="w-full border rounded p-1 bg-white"
-                          value={line.rack}
-                          onChange={(e) => updateLine(line.key, { rack: e.target.value })}
-                        >
-                          <option value="">Select rack...</option>
-                          {racks.map((r) => (
-                            <option key={r.id} value={r.id}>{rackLabel(r)}</option>
-                          ))}
-                        </select>
-                      </TD>
-                      <TD align="center">
-                        <button
-                          onClick={() => removeRow(line.key)}
-                          className="text-red-500 hover:text-red-700 font-bold p-2"
-                          aria-label={`Remove line ${index + 1}`}
-                        >
-                          ✕
-                        </button>
-                      </TD>
-                    </TR>
-                  );
-                })}
-              </TBody>
-            </Table>
-          </TableCard>
-        </div>
-      </section>
+        <section className="flex flex-col gap-4">
+          <div className="flex justify-between items-center bg-white p-4 rounded-t-lg border border-b-0">
+            <h2 className="text-lg font-medium text-gray-900">Books Received</h2>
+            <Button variant="primary" iconLeading="plus" onClick={addRow}>Add Book</Button>
+          </div>
+          <div className="mt-[-16px]">
+            <TableCard>
+              <Table>
+                <THead>
+                  <TR>
+                    <TH width={60}>Cover</TH>
+                    <TH width={170}>ISBN</TH>
+                    <TH width={240}>Book Name</TH>
+                    <TH width={110}>MRP</TH>
+                    <TH width={90}>Qty</TH>
+                    <TH width={240}>Rack</TH>
+                    <TH width={60} align="center">Action</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {lines.map((line, index) => {
+                    const known = line.lookup === "found";
+                    return (
+                      <TR key={line.key} data-testid={`in-line-${index + 1}`}>
+                        <TD>
+                          <div className="w-8 h-8 rounded bg-[#1c2c4c] text-white flex items-center justify-center text-xs font-bold">
+                            {line.title ? coverInitials(line.title) : "?"}
+                          </div>
+                        </TD>
+                        <TD>
+                          <input
+                            type="text"
+                            placeholder="ISBN"
+                            aria-label={`ISBN, line ${index + 1}`}
+                            className="w-full border rounded p-1"
+                            maxLength={20}
+                            value={line.isbn}
+                            onChange={(e) => {
+                              const isbn = e.target.value;
+                              // A different ISBN is a different book: drop what
+                              // the catalog filled in for the old one.
+                              updateLine(line.key, (current) => ({
+                                isbn,
+                                lookup: "idle",
+                                book: null,
+                                ...(current.book ? { title: "", mrp: "" } : {}),
+                              }));
+                            }}
+                            onBlur={() => lookUpIsbn(line)}
+                          />
+                          <div className="text-xs mt-1 h-4 text-gray-500">
+                            {line.lookup === "checking" && "Checking catalog..."}
+                            {line.lookup === "found" && <span className="text-green-700">In catalog</span>}
+                            {line.lookup === "new" && <span className="text-blue-700">New title — will be registered</span>}
+                          </div>
+                        </TD>
+                        <TD>
+                          <input
+                            type="text"
+                            placeholder="Title..."
+                            aria-label={`Book name, line ${index + 1}`}
+                            className="w-full border rounded p-1 read-only:bg-gray-50"
+                            value={line.title}
+                            readOnly={known}
+                            onChange={(e) => updateLine(line.key, { title: e.target.value })}
+                          />
+                        </TD>
+                        <TD>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            aria-label={`MRP, line ${index + 1}`}
+                            className="w-full border rounded p-1 read-only:bg-gray-50"
+                            value={line.mrp}
+                            readOnly={known}
+                            onChange={(e) => updateLine(line.key, { mrp: e.target.value })}
+                          />
+                        </TD>
+                        <TD>
+                          <input
+                            type="number"
+                            min="1"
+                            aria-label={`Quantity, line ${index + 1}`}
+                            className="w-full border rounded p-1"
+                            value={line.qty}
+                            onChange={(e) => updateLine(line.key, { qty: e.target.value })}
+                          />
+                        </TD>
+                        <TD>
+                          <select
+                            aria-label={`Rack, line ${index + 1}`}
+                            className="w-full border rounded p-1 bg-white"
+                            value={line.rack}
+                            onChange={(e) => updateLine(line.key, { rack: e.target.value })}
+                          >
+                            <option value="">Select rack...</option>
+                            {racks.map((r) => (
+                              <option key={r.id} value={r.id}>{rackLabel(r)}</option>
+                            ))}
+                          </select>
+                        </TD>
+                        <TD align="center">
+                          <button
+                            onClick={() => removeRow(line.key)}
+                            className="text-red-500 hover:text-red-700 font-bold p-2"
+                            aria-label={`Remove line ${index + 1}`}
+                          >
+                            ✕
+                          </button>
+                        </TD>
+                      </TR>
+                    );
+                  })}
+                </TBody>
+              </Table>
+            </TableCard>
+          </div>
+        </section>
+      </fieldset>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <div className="border bg-white rounded-lg p-6 flex flex-col gap-2">

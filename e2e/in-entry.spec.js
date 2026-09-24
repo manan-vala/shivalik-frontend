@@ -96,6 +96,48 @@ test("a refused line keeps its place; lines before it are not booked twice", asy
   expect(await stockOf(api, second)).toBe(10);
 });
 
+test("submitting straight from the ISBN field still recognises a catalog title", async ({ page, request }) => {
+  await page.getByLabel("Vendor Name *").selectOption({ label: "Penguin Distributors" });
+  await page.getByLabel("Quantity, line 1").fill("3");
+  await page.getByLabel("Rack, line 1").selectOption(rack("E2E-R05"));
+  // ISBN last, then straight to the button: the blur lookup is still in
+  // flight when the submit starts.
+  await page.getByLabel("ISBN, line 1").fill("E2E-QUICK-0001");
+  await page.getByRole("button", { name: "Add To Inventory" }).click();
+
+  await expect(page.getByRole("status")).toHaveText(
+    "Booked in 3 units across 1 title(s) from Penguin Distributors."
+  );
+  expect(await stockOf(await adminApi(request), "E2E-QUICK-0001")).toBe(3);
+});
+
+test("the form is frozen while an entry is being saved", async ({ page }) => {
+  // Hold each stock-in for a moment so the in-flight state can be seen. The
+  // request still goes to the real backend.
+  await page.route("**/stock-in/", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await route.continue();
+  });
+
+  await page.getByLabel("Vendor Name *").selectOption({ label: "Penguin Distributors" });
+  await fillLine(page, 1, {
+    isbn: uniqueIsbn("HOLD"),
+    title: "E2E Held Title",
+    mrp: "60",
+    qty: 1,
+    rackName: "E2E-R06",
+  });
+  await page.getByRole("button", { name: "Add To Inventory" }).click();
+
+  await expect(page.getByRole("button", { name: "Adding..." })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add Book" })).toBeDisabled();
+  await expect(page.getByLabel("Quantity, line 1")).toBeDisabled();
+  await expect(page.getByLabel("Vendor Name *")).toBeDisabled();
+
+  await expect(page.getByRole("status")).toContainText("Booked in 1 units");
+  await expect(page.getByRole("button", { name: "Add Book" })).toBeEnabled();
+});
+
 test("an entry without a vendor is stopped in the form", async ({ page }) => {
   await fillLine(page, 1, { isbn: "E2E-IN-0001", qty: 1, rackName: "E2E-R01" });
   await page.getByRole("button", { name: "Add To Inventory" }).click();

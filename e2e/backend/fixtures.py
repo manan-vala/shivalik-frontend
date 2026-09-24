@@ -48,19 +48,25 @@ def book(isbn, title, *, mrp, min_stock, low_selling=False):
     )
 
 
-def stock(b, rack, quantity):
+def stock(b, rack, quantity, movement_type=MovementType.IN):
     apply_stock_movement(
         book=b,
         rack=rack,
         quantity=quantity,
-        movement_type=MovementType.IN,
+        movement_type=movement_type,
         actor=admin,
-        vendor=vendor,
+        vendor=vendor if movement_type == MovementType.IN else None,
         reason="E2E fixture",
     )
 
 
 book("E2E-IN-0001", "E2E Existing Title", mrp="250.00", min_stock=5)
+book("E2E-QUICK-0001", "E2E Quick Title", mrp="180.00", min_stock=5)
+
+# Stocked, then booked out entirely: its ledger row on REF-102 stays, at 0.
+cleared = book("E2E-CLR-0001", "E2E Cleared Title", mrp="90.00", min_stock=5)
+stock(cleared, Rack.objects.get(name="REF-102"), 4)
+stock(cleared, Rack.objects.get(name="REF-102"), 4, MovementType.OUT)
 stock(book("E2E-OUT-0001", "E2E Outbound Title", mrp="300.00", min_stock=5), rack_ref, 30)
 stock(book("E2E-LOW-0001", "E2E Low Stock Atlas", mrp="410.00", min_stock=30), rack_a1, 5)
 book("E2E-EMPTY-0001", "E2E Empty Shelf", mrp="120.00", min_stock=10)

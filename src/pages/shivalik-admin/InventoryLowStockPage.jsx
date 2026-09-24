@@ -34,13 +34,13 @@ async function loadLowStock() {
     getActiveVendors(),
   ]);
   const totals = totalsByBook(ledger);
-  const rows = books.map((book) => {
-    const suppliers = new Map();
-    for (const r of totals.get(book.id)?.racks ?? []) {
-      if (r.vendor) suppliers.set(r.vendor, r.vendor_name);
-    }
-    return { ...book, suppliers: [...suppliers].map(([id, name]) => ({ id, name })) };
-  });
+  const rows = books.map((book) => ({
+    ...book,
+    // `racks` from `stock/low-stock/` keeps racks emptied since; show only
+    // where the book actually is.
+    racks: book.racks.filter((r) => r.curr_stock > 0),
+    suppliers: [...(totals.get(book.id)?.vendors ?? [])].map(([id, name]) => ({ id, name })),
+  }));
   return { books: rows, vendors };
 }
 

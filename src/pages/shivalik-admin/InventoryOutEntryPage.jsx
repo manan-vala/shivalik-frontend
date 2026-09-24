@@ -135,116 +135,119 @@ export default function InventoryOutEntryPage() {
 
       {error && <Alert tone="error">Could not load stock: {error.message}</Alert>}
 
-      <Card>
-        <div className="p-6">
-          <div className="flex justify-between items-start gap-4 mb-6">
-            <div>
-              <h3 className="text-base font-bold text-gray-900">Books to Take Out</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Recorded by <span className="font-medium text-gray-700">{user?.name || user?.email}</span>
-              </p>
-            </div>
-
-            <div className="relative w-96">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-              <input
-                type="text"
-                role="combobox"
-                aria-expanded={matches.length > 0}
-                aria-controls="out-entry-matches"
-                aria-label="Search and add book"
-                placeholder={loading ? "Loading stock..." : "Search by title or ISBN..."}
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 border rounded-md focus:bg-white focus:ring-2 focus:ring-primary/50 text-sm"
-                value={searchQuery}
-                disabled={loading}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-              />
-              {searchQuery.trim() && (
-                <ul
-                  id="out-entry-matches"
-                  role="listbox"
-                  className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg max-h-72 overflow-y-auto"
-                >
-                  {matches.length === 0 ? (
-                    <li className="px-3 py-2 text-sm text-gray-500">No stocked book matches.</li>
-                  ) : (
-                    matches.map((row) => (
-                      <li key={row.id} role="option" aria-selected="false">
-                        <button
-                          type="button"
-                          onClick={() => addRow(row)}
-                          className="w-full text-left px-3 py-2 hover:bg-gray-50"
-                        >
-                          <div className="text-sm font-medium text-gray-900">{row.book_title}</div>
-                          <div className="text-xs text-gray-500">
-                            {row.isbn} · {row.rack_location} · {row.curr_stock} available
-                          </div>
-                        </button>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {selected.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 mb-4">
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+      {/* Frozen while saving: the lines being sent must not change underneath. */}
+      <fieldset disabled={submitting} className="contents">
+        <Card>
+          <div className="p-6">
+            <div className="flex justify-between items-start gap-4 mb-6">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Books to Take Out</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Recorded by <span className="font-medium text-gray-700">{user?.name || user?.email}</span>
+                </p>
               </div>
-              <h4 className="text-base font-medium text-gray-900 mb-1">No books added yet</h4>
-              <p className="text-sm text-gray-500">Search above to add books to this entry</p>
+
+              <div className="relative w-96">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input
+                  type="text"
+                  role="combobox"
+                  aria-expanded={matches.length > 0}
+                  aria-controls="out-entry-matches"
+                  aria-label="Search and add book"
+                  placeholder={loading ? "Loading stock..." : "Search by title or ISBN..."}
+                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border rounded-md focus:bg-white focus:ring-2 focus:ring-primary/50 text-sm"
+                  value={searchQuery}
+                  disabled={loading}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                />
+                {searchQuery.trim() && (
+                  <ul
+                    id="out-entry-matches"
+                    role="listbox"
+                    className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg max-h-72 overflow-y-auto"
+                  >
+                    {matches.length === 0 ? (
+                      <li className="px-3 py-2 text-sm text-gray-500">No stocked book matches.</li>
+                    ) : (
+                      matches.map((row) => (
+                        <li key={row.id} role="option" aria-selected="false">
+                          <button
+                            type="button"
+                            onClick={() => addRow(row)}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                          >
+                            <div className="text-sm font-medium text-gray-900">{row.book_title}</div>
+                            <div className="text-xs text-gray-500">
+                              {row.isbn} · {row.rack_location} · {row.curr_stock} available
+                            </div>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH width={260}>Book Title</TH>
-                    <TH width={160}>ISBN</TH>
-                    <TH width={240}>Rack</TH>
-                    <TH width={100}>Available</TH>
-                    <TH width={120}>Out Qty</TH>
-                    <TH width={80} align="center">Action</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {selected.map(({ row, qty }) => (
-                    <TR key={row.id} data-testid={`out-line-${row.id}`}>
-                      <TD className="font-medium text-gray-900">{row.book_title}</TD>
-                      <TD className="text-gray-500">{row.isbn}</TD>
-                      <TD className="text-gray-500">{row.rack_location}</TD>
-                      <TD className="text-gray-500">{row.curr_stock}</TD>
-                      <TD>
-                        <input
-                          type="number"
-                          min="1"
-                          max={row.curr_stock}
-                          aria-label={`Out quantity for ${row.book_title}`}
-                          className="w-24 border rounded p-1"
-                          value={qty}
-                          onChange={(e) => setQty(row.id, e.target.value)}
-                        />
-                      </TD>
-                      <TD align="center">
-                        <button
-                          onClick={() => removeRow(row.id)}
-                          className="text-red-500 hover:text-red-700 p-2"
-                          aria-label={`Remove ${row.book_title}`}
-                        >
-                          ✕
-                        </button>
-                      </TD>
+
+            {selected.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 mb-4">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                </div>
+                <h4 className="text-base font-medium text-gray-900 mb-1">No books added yet</h4>
+                <p className="text-sm text-gray-500">Search above to add books to this entry</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH width={260}>Book Title</TH>
+                      <TH width={160}>ISBN</TH>
+                      <TH width={240}>Rack</TH>
+                      <TH width={100}>Available</TH>
+                      <TH width={120}>Out Qty</TH>
+                      <TH width={80} align="center">Action</TH>
                     </TR>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
-          )}
-        </div>
-      </Card>
+                  </THead>
+                  <TBody>
+                    {selected.map(({ row, qty }) => (
+                      <TR key={row.id} data-testid={`out-line-${row.id}`}>
+                        <TD className="font-medium text-gray-900">{row.book_title}</TD>
+                        <TD className="text-gray-500">{row.isbn}</TD>
+                        <TD className="text-gray-500">{row.rack_location}</TD>
+                        <TD className="text-gray-500">{row.curr_stock}</TD>
+                        <TD>
+                          <input
+                            type="number"
+                            min="1"
+                            max={row.curr_stock}
+                            aria-label={`Out quantity for ${row.book_title}`}
+                            className="w-24 border rounded p-1"
+                            value={qty}
+                            onChange={(e) => setQty(row.id, e.target.value)}
+                          />
+                        </TD>
+                        <TD align="center">
+                          <button
+                            onClick={() => removeRow(row.id)}
+                            className="text-red-500 hover:text-red-700 p-2"
+                            aria-label={`Remove ${row.book_title}`}
+                          >
+                            ✕
+                          </button>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </Card>
+      </fieldset>
 
       {result && <Alert tone={result.tone}>{result.message}</Alert>}
 

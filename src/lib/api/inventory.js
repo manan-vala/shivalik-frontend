@@ -109,21 +109,30 @@ export function runCampaign(bookId, terms) {
 }
 
 /**
- * Per-book stock totals from the ledger: `Map<bookId, { total, racks }>`,
- * where `racks` is `[{ rack, rack_location, curr_stock, vendor }]`.
+ * Per-book stock totals from the ledger: `Map<bookId, { total, racks, vendors }>`.
+ *
+ * `racks` — `[{ rack, rack_location, curr_stock, vendor, vendor_name }]`,
+ *   only racks that hold the book *now*. A ledger row outlives its stock
+ *   (a fully booked-out rack keeps its row at 0), so an unfiltered list
+ *   would place an out-of-stock title on racks it has left.
+ * `vendors` — `Map<vendorId, name>` of everyone who has supplied the book,
+ *   including onto racks since emptied.
  */
 export function totalsByBook(ledgerRows) {
   const totals = new Map();
   for (const row of ledgerRows) {
-    const entry = totals.get(row.book) ?? { total: 0, racks: [] };
+    const entry = totals.get(row.book) ?? { total: 0, racks: [], vendors: new Map() };
     entry.total += row.curr_stock;
-    entry.racks.push({
-      rack: row.rack,
-      rack_location: row.rack_location,
-      curr_stock: row.curr_stock,
-      vendor: row.vendor,
-      vendor_name: row.vendor_name,
-    });
+    if (row.curr_stock > 0) {
+      entry.racks.push({
+        rack: row.rack,
+        rack_location: row.rack_location,
+        curr_stock: row.curr_stock,
+        vendor: row.vendor,
+        vendor_name: row.vendor_name,
+      });
+    }
+    if (row.vendor) entry.vendors.set(row.vendor, row.vendor_name);
     totals.set(row.book, entry);
   }
   return totals;

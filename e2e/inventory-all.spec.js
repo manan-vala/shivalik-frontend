@@ -46,6 +46,20 @@ test("the details dialog breaks stock down by rack", async ({ page }) => {
   await expect(dialog).toBeHidden();
 });
 
+test("a title booked out of every rack is not placed on the rack it left", async ({ page }) => {
+  await page.goto("/admin/inventory");
+
+  // Its ledger row on REF-102 is still there, at 0.
+  const cleared = row(page, "E2E Cleared Title");
+  await expect(cleared).toContainText("Out of Stock");
+  await expect(cleared).toContainText("Unassigned");
+  await expect(cleared).not.toContainText("REF-102");
+
+  await page.getByRole("button", { name: "View E2E Cleared Title" }).click();
+  const dialog = page.getByRole("dialog", { name: "Book Details" });
+  await expect(dialog).toContainText("Not stocked on any rack.");
+});
+
 test("the warehouses screen is reachable and lists warehouses", async ({ page }) => {
   await page.goto("/admin/inventory");
   await page.getByRole("link", { name: "Warehouses" }).click();
