@@ -1,18 +1,34 @@
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../lib/auth-context.js";
-import { landingPathForRole } from "../routes/portals.js";
 import { useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth-context.js";
+import { PORTAL_LIST, landingPathForRole } from "../routes/portals.js";
 
 /**
- * Backend sign-in for the staff portal.
+ * Where to go after signing in: back to the screen that bounced the user here
+ * (RequireRole passes it as `state.from`), provided it sits inside their own
+ * portal — otherwise their portal's landing screen.
  */
-export default function RoleSwitcher() {
-  const { signIn } = useAuth();
+function destinationFor(role, from) {
+  const portal = PORTAL_LIST.find((p) => p.role === role);
+  if (portal && from?.startsWith(`${portal.basePath}/`)) return from;
+  return landingPathForRole(role);
+}
+
+/** Staff sign-in against Django's `/auth/login/`. */
+export default function SignInPage() {
+  const { signIn, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  if (isAuthenticated && !loading) {
+    return <Navigate to={destinationFor(role, from)} replace />;
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -20,14 +36,10 @@ export default function RoleSwitcher() {
     setLoading(true);
 
     try {
-      const user = await signIn(email, password);
-      const role = user.is_staff || user.role === "ADMIN"
-        ? "shivalik_admin"
-        : "shivalik_admin";
-      navigate(landingPathForRole(role), { replace: true });
+      const session = await signIn(email, password);
+      navigate(destinationFor(session.role, from), { replace: true });
     } catch (err) {
       setError(err.message || "Unable to sign in.");
-    } finally {
       setLoading(false);
     }
   }
@@ -65,7 +77,11 @@ export default function RoleSwitcher() {
               required
             />
           </label>
-          {error && <p className="text-sm text-error-500">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-error-500">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading}

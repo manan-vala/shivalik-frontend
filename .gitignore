@@ -25,3 +25,9 @@ dist-ssr
 
 # Scratch file for composing commit messages (never committed).
 COMMIT_MSG.txt
+
+# Playwright e2e output
+/test-results/
+/playwright-report/
+/blob-report/
+/e2e/.auth/

@@ -11,11 +11,15 @@ import { useAuth } from "../lib/auth-context.js";
  * out for full-bleed content.
  */
 export default function SidebarLayout({ portal }) {
-  const { signOut } = useAuth();
+  const { signOut, user: employee } = useAuth();
   const navigate = useNavigate();
 
-  // Placeholder identity until the backend session exists. See lib/auth.jsx.
-  const user = { name: "Manan Vala", email: "manan@shivalik.example" };
+  // The employee from `/auth/me/`. A blank name falls back to the email, so
+  // the account row is never empty.
+  const user = {
+    name: employee?.name || employee?.email || "",
+    email: employee?.email || "",
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
