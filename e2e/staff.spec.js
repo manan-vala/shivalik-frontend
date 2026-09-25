@@ -86,3 +86,16 @@ test("rejecting requires a reason and records it", async ({ page, request }) => 
     rejection_reason: "Missing verification documents.",
   });
 });
+
+test("Attendance → View is read-only (its records are mock data)", async ({ page }) => {
+  // Regression: this page opened the API-backed edit form with nothing to
+  // save to, and Save failed with "onSaved is not a function".
+  await page.goto("/admin/staff/attendance");
+  // `exact`: a substring match on "View" also hits the sidebar's
+  // "Inventory Overview" disclosure button.
+  await page.getByRole("button", { name: "View", exact: true }).first().click();
+
+  const detail = page.getByRole("dialog").filter({ has: page.getByRole("tab", { name: "Overview" }) });
+  await expect(detail).toBeVisible();
+  await expect(detail.getByRole("button", { name: "Edit" })).toHaveCount(0);
+});

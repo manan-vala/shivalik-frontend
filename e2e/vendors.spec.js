@@ -82,3 +82,25 @@ test("blocks and unblocks from the detail dialog", async ({ page, request }) => 
   await expect(row(page, name)).toContainText("Active");
   expect((await vendorByName(request, name)).is_blocked).toBe(false);
 });
+
+test("the Dashboard's Add Vendor quick action creates a real vendor", async ({ page, request }) => {
+  // Regression: after the vendor form became API-backed, this caller was
+  // never given `onSaved`, and Save failed with "onSaved is not a function".
+  const name = uniqueIsbn("E2E-Dash");
+  await page.goto("/admin/dashboard");
+  await page.getByRole("button", { name: "Add Vendor" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Add Vendor" });
+  await dialog.getByLabel("Company Name").fill(name);
+  await dialog.getByLabel("Vendor Name").fill("Dashboard Contact");
+  await dialog.getByLabel("GSTIN").fill("25AAAAA8888A1Z5");
+  await dialog.getByRole("button", { name: "Save Vendor" }).click();
+  await expect(dialog).toBeHidden();
+
+  expect(await vendorByName(request, name)).toMatchObject({ vendor_name: "Dashboard Contact" });
+
+  // Reopening starts clean, not pre-filled with a Save stuck on "Saving...".
+  await page.getByRole("button", { name: "Add Vendor" }).click();
+  await expect(dialog.getByLabel("Company Name")).toHaveValue("");
+  await expect(dialog.getByRole("button", { name: "Save Vendor" })).toBeEnabled();
+});
