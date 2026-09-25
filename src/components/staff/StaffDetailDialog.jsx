@@ -93,13 +93,18 @@ export default function StaffDetailDialog({
                 {staff.name}
               </h2>
               <div className="flex items-center gap-2">
-                <Badge tone={STATUS_TONES[staff.status] ?? "neutral"}>{staff.status}</Badge>
+                {staff.status && (
+                  <Badge tone={STATUS_TONES[staff.status] ?? "neutral"}>{staff.status}</Badge>
+                )}
                 <span className="text-xs font-medium text-tertiary">{roleLabel(staff.role)}</span>
               </div>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => onEdit?.(staff)}>
-              Edit
-            </Button>
+            {/* Only when the caller can actually save an edit. */}
+            {onEdit && (
+              <Button variant="secondary" size="sm" onClick={() => onEdit(staff)}>
+                Edit
+              </Button>
+            )}
           </div>
           <Tabs tabs={TABS} value={tab} onChange={setTab} label="Staff details" />
         </div>

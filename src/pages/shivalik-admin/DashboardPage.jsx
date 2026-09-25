@@ -11,6 +11,7 @@ import AddClientDialog from "../../components/clients/AddClientDialog.jsx";
 import VendorFormDialog from "../../components/vendors/VendorFormDialog.jsx";
 import CreateQuoteDialog from "../../components/quotes/CreateQuoteDialog.jsx";
 import GenerateInvoiceDialog from "../../components/invoices/GenerateInvoiceDialog.jsx";
+import { createVendor } from "../../lib/api/inventory.js";
 import {
   KPIS,
   REVENUE_TREND,
@@ -122,7 +123,18 @@ export default function DashboardPage() {
       </section>
 
       <AddClientDialog open={dialog === "client"} onClose={close} />
-      <VendorFormDialog mode="add" open={dialog === "vendor"} onClose={close} />
+      {/* The one quick action with a backend: it creates a real vendor, the
+          same call the Vendors screen makes. VendorFormDialog reports a
+          failed save itself and only closes once the vendor exists. */}
+      <VendorFormDialog
+        mode="add"
+        open={dialog === "vendor"}
+        onClose={close}
+        onSaved={async (payload) => {
+          await createVendor(payload);
+          close();
+        }}
+      />
       <CreateQuoteDialog open={dialog === "quote"} onClose={close} />
       <GenerateInvoiceDialog open={dialog === "invoice"} onClose={close} />
     </div>

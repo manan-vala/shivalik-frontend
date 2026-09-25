@@ -6,7 +6,6 @@ import SearchInput from "../../components/ui/SearchInput.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
 import StaffAttendanceTable from "../../components/staff/StaffAttendanceTable.jsx";
 import StaffDetailDialog from "../../components/staff/StaffDetailDialog.jsx";
-import StaffFormDialog from "../../components/staff/StaffFormDialog.jsx";
 import { STAFF, ATTENDANCE_OVERVIEW, MONTHLY_ATTENDANCE, ATTENDANCE_ROWS } from "../../data/staff.js";
 
 /**
@@ -18,16 +17,16 @@ import { STAFF, ATTENDANCE_OVERVIEW, MONTHLY_ATTENDANCE, ATTENDANCE_ROWS } from 
  * 1181:84698/84703, matching 790:22391/790:22374 on the Dashboard) - not
  * rebuilt here.
  *
- * "View" opens the same StaffDetailDialog as the All Staff page, defaulting
- * to its Attendance tab rather than Overview, since that is what this page's
- * own context is about.
+ * "View" opens the same StaffDetailDialog as the All Staff page, read-only.
+ * The dialog's Attendance tab was removed when Staff was connected to the API
+ * (nothing backs it — attendance scope is an open question), and this page's
+ * records are mock data, so it offers no Edit either.
  */
 export default function AttendancePage() {
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState(ATTENDANCE_ROWS);
   const [selected, setSelected] = useState(null);
   const [viewOpen, setViewOpen] = useState(false);
-  const [formMode, setFormMode] = useState(null); // null | "edit"
 
   const visibleRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -46,12 +45,6 @@ export default function AttendancePage() {
   function view(row) {
     setSelected(STAFF.find((s) => s.id === row.staffId) ?? null);
     setViewOpen(true);
-  }
-
-  function editFromDetail(staff) {
-    setSelected(staff);
-    setViewOpen(false);
-    setFormMode("edit");
   }
 
   return (
@@ -80,21 +73,15 @@ export default function AttendancePage() {
 
       <Pagination hasPrevious={false} />
 
+      {/* View only. This page and its staff records are mock data (whether
+          attendance is in scope is still undecided), so there is nothing an
+          Edit here could save to — real staff are edited on the Staff screen.
+          Without `onEdit` the dialog shows no Edit button. */}
       <StaffDetailDialog
         key={selected?.id}
         staff={selected}
         open={viewOpen}
         onClose={() => setViewOpen(false)}
-        onEdit={editFromDetail}
-        defaultTab="attendance"
-      />
-
-      <StaffFormDialog
-        key={selected?.id}
-        mode="edit"
-        staff={selected}
-        open={formMode === "edit"}
-        onClose={() => setFormMode(null)}
       />
     </div>
   );
