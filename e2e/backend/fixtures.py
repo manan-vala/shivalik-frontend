@@ -113,6 +113,16 @@ Vendor.objects.create(
     gst_number="24AAAAA3333A1Z5",
     is_blocked=True,
 )
+# Same company name as the PO spec's vendor below, different GSTIN —
+# `company_name` isn't unique on the backend, and vendors sort by it with no
+# tiebreak, so which of the two lists first is up to the database. The spec
+# checks the order lands on the GSTIN it picked — a picker matching by name
+# could land it on either.
+Vendor.objects.create(
+    company_name="E2E PO Vendor",
+    vendor_name="E2E PO Namesake",
+    gst_number="19AAAAA6666A1Z5",
+)
 # Dedicated to the Purchase Orders spec, so its order count and history stay
 # untouched by whatever the Low Stock spec books against Penguin Distributors.
 Vendor.objects.create(
