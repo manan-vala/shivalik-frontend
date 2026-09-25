@@ -98,4 +98,9 @@ test("the Dashboard's Add Vendor quick action creates a real vendor", async ({ p
   await expect(dialog).toBeHidden();
 
   expect(await vendorByName(request, name)).toMatchObject({ vendor_name: "Dashboard Contact" });
+
+  // Reopening starts clean, not pre-filled with a Save stuck on "Saving...".
+  await page.getByRole("button", { name: "Add Vendor" }).click();
+  await expect(dialog.getByLabel("Company Name")).toHaveValue("");
+  await expect(dialog.getByRole("button", { name: "Save Vendor" })).toBeEnabled();
 });

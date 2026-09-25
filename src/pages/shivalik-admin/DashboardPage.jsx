@@ -125,8 +125,12 @@ export default function DashboardPage() {
       <AddClientDialog open={dialog === "client"} onClose={close} />
       {/* The one quick action with a backend: it creates a real vendor, the
           same call the Vendors screen makes. VendorFormDialog reports a
-          failed save itself and only closes once the vendor exists. */}
+          failed save itself and only closes once the vendor exists. Keyed on
+          open/closed so each opening starts from an empty form — the dialog
+          only resets `saving` on failure, and without a remount a second
+          Add Vendor would open pre-filled with the Save button stuck. */}
       <VendorFormDialog
+        key={dialog === "vendor" ? "vendor-open" : "vendor-closed"}
         mode="add"
         open={dialog === "vendor"}
         onClose={close}
