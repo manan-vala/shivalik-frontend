@@ -42,9 +42,14 @@ for n in range(1, 21):
 Rack.objects.create(section=overflow, name="E2E-TINY", max_capacity=5)
 
 
-def book(isbn, title, *, mrp, min_stock, low_selling=False):
+def book(isbn, title, *, mrp, min_stock, low_selling=False, dead_stock_threshold_days=None):
     return Book.objects.create(
-        isbn=isbn, title=title, mrp=mrp, min_stock=min_stock, low_selling=low_selling
+        isbn=isbn,
+        title=title,
+        mrp=mrp,
+        min_stock=min_stock,
+        low_selling=low_selling,
+        dead_stock_threshold_days=dead_stock_threshold_days,
     )
 
 
@@ -74,6 +79,72 @@ stock(
     book("E2E-SLOW-0001", "E2E Slow Seller", mrp="199.00", min_stock=5, low_selling=True),
     rack_cs,
     40,
+)
+
+# `dead_stock_threshold_days=0` makes any amount of time since it was stocked
+# in count as stale — the site default (90 days) would never trip inside an
+# e2e run, so this is the one title dead-stock actually flags.
+stock(
+    book("E2E-DEAD-0001", "E2E Dead Stock Title", mrp="150.00", min_stock=5, dead_stock_threshold_days=0),
+    Rack.objects.get(name="AH-101"),
+    12,
+)
+
+# -- Vendors -------------------------------------------------------------
+
+# `categories_supplied` is free text (no Printing/Binding enum on the
+# backend) — see VendorsPage's own note. These two exist so the sidebar's
+# "Printing Vendors" / "Binding Vendors" filters have something to find.
+Vendor.objects.create(
+    company_name="E2E Printworks",
+    vendor_name="E2E Printworks Contact",
+    gst_number="27AAAAA1111A1Z5",
+    categories_supplied=["Printing"],
+)
+Vendor.objects.create(
+    company_name="E2E Bindery",
+    vendor_name="E2E Bindery Contact",
+    gst_number="29AAAAA2222A1Z5",
+    categories_supplied=["Binding"],
+)
+Vendor.objects.create(
+    company_name="E2E Blocked Vendor",
+    vendor_name="E2E Blocked Contact",
+    gst_number="24AAAAA3333A1Z5",
+    is_blocked=True,
+)
+# Same company name as the PO spec's vendor below, different GSTIN —
+# `company_name` isn't unique on the backend, and vendors sort by it with no
+# tiebreak, so which of the two lists first is up to the database. The spec
+# checks the order lands on the GSTIN it picked — a picker matching by name
+# could land it on either.
+Vendor.objects.create(
+    company_name="E2E PO Vendor",
+    vendor_name="E2E PO Namesake",
+    gst_number="19AAAAA6666A1Z5",
+)
+# Dedicated to the Purchase Orders spec, so its order count and history stay
+# untouched by whatever the Low Stock spec books against Penguin Distributors.
+Vendor.objects.create(
+    company_name="E2E PO Vendor",
+    vendor_name="E2E PO Contact",
+    gst_number="28AAAAA5555A1Z5",
+    payment_terms="Net 15",
+)
+
+# -- Staff -----------------------------------------------------------------
+
+Employee.objects.create_user(
+    email="e2e.pending@shivalik.test",
+    password="E2e-Pending-2026!",
+    name="E2E Pending Employee",
+)
+Employee.objects.create_user(
+    email="e2e.approved@shivalik.test",
+    password="E2e-Approved-2026!",
+    name="E2E Order Manager",
+    role=Employee.Role.ORDER_MANAGER,
+    status=Employee.Status.APPROVED,
 )
 
 print("E2E fixtures loaded.")

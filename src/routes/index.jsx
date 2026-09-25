@@ -27,6 +27,8 @@ import InventoryLowSellingPage from "../pages/shivalik-admin/InventoryLowSelling
 import InventoryOutEntryPage from "../pages/shivalik-admin/InventoryOutEntryPage.jsx";
 import WarehouseMapPage from "../pages/shivalik-admin/WarehouseMapPage.jsx";
 import EmptyRacksPage from "../pages/shivalik-admin/EmptyRacksPage.jsx";
+import DeadStockPage from "../pages/shivalik-admin/DeadStockPage.jsx";
+import PurchaseOrdersPage from "../pages/shivalik-admin/PurchaseOrdersPage.jsx";
 
 /**
  * Route tree
@@ -65,6 +67,7 @@ const BUILT_PAGES = {
   "shivalik-admin:vendors/binding": <VendorsPage filter="binding" />,
   "shivalik-admin:vendors/active": <VendorsPage filter="active" />,
   "shivalik-admin:vendors/inactive": <VendorsPage filter="inactive" />,
+  "shivalik-admin:vendors/purchase-orders": <PurchaseOrdersPage />,
   "shivalik-admin:orders": <OrdersPage filter="all" />,
   "shivalik-admin:orders/design": <OrdersPage filter="design" />,
   "shivalik-admin:orders/printing": <OrdersPage filter="printing" />,
@@ -85,6 +88,7 @@ const BUILT_PAGES = {
   "shivalik-admin:inventory/out-entry": <InventoryOutEntryPage />,
   "shivalik-admin:inventory-map/warehouse-map": <WarehouseMapPage />,
   "shivalik-admin:inventory-map/empty-racks": <EmptyRacksPage />,
+  "shivalik-admin:inventory-map/dead-stock": <DeadStockPage />,
 };
 
 function portalRoute(portal) {

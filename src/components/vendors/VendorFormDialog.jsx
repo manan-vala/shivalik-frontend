@@ -1,85 +1,101 @@
 import { useState } from "react";
 import Modal from "../ui/Modal.jsx";
 import Button from "../ui/Button.jsx";
-import {
-  TextField,
-  SelectField,
-  CheckboxGroup,
-} from "../ui/TextField.jsx";
-import {
-  VENDOR_CITIES,
-  VENDOR_TYPES,
-  VENDOR_STATUS_OPTIONS,
-  VENDOR_STATUS,
-} from "../../data/vendors.js";
+import Alert from "../ui/Alert.jsx";
+import { TextField, Textarea } from "../ui/TextField.jsx";
 
 /**
  * Add / Edit Vendor dialog
- * Figma: GOLDEN / Vendors
- *   Add Vendor  (node 1180:48049)
- *   Edit Vendor (node 1180:48090)
  *
- * One dialog, two modes - the same six fields in the same 2-up grid; Edit adds
- * a Status select, prefills from the row, and greys the inline Verify /
- * Auto-generate actions. Same construction as StaffFormDialog.
+ * One dialog, two modes, matching the backend's `Vendor` model exactly —
+ * `is_blocked` is not here because the serializer marks it read-only; a
+ * vendor is blocked or unblocked from the row action on VendorsPage, which
+ * calls the dedicated endpoint (and writes an audit row the way this form
+ * never could).
  *
- * SUPERSEDES the older Add Vendor frame (Shivalik file, node 790:22655) that
- * `AddVendorDialog` was built from. That frame had a Printing/Binding *radio*
- * group and a three-button footer ("Save Vendor / Send Details to Mobile /
- * Cancel"); this one uses checkboxes - a vendor can do both, and both boxes
- * are ticked in the frame - and a two-button footer. The Dashboard's Add
- * Vendor action now opens this dialog, so the app has one vendor form rather
- * than two that disagree.
+ * `categories_supplied` is a JSON list on the backend; the model's own
+ * help text says "the UI collects them comma-separated", so that's the
+ * text field here, split/joined at the edges.
  *
  * STATE: lazy-seeded from `vendor`, remounted by the parent via
- * `key={mode + vendor?.id}` rather than an effect - the ClientDetailDialog
- * pattern.
+ * `key={mode + vendor?.id}` rather than an effect — the same pattern every
+ * dialog in this app uses.
  */
 
 const TITLES = { add: "Add Vendor", edit: "Edit Vendor" };
 const SAVE_LABELS = { add: "Save Vendor", edit: "Save Changes" };
 
 const EMPTY = {
-  businessName: "",
-  contactName: "",
+  company_name: "",
+  vendor_name: "",
+  gst_number: "",
+  contact_person: "",
   phone: "",
   email: "",
-  city: "",
-  vendorId: "",
-  vendorTypes: ["Printing"],
-  status: VENDOR_STATUS_OPTIONS[0],
+  address: "",
+  categories: "",
+  expected_delivery_days: "",
+  payment_terms: "",
+  notes: "",
 };
 
 function seed(mode, vendor) {
   if (mode !== "edit" || !vendor) return EMPTY;
   return {
-    businessName: vendor.name,
-    contactName: vendor.contact ?? "",
+    company_name: vendor.company_name ?? "",
+    vendor_name: vendor.vendor_name ?? "",
+    gst_number: vendor.gst_number ?? "",
+    contact_person: vendor.contact_person ?? "",
     phone: vendor.phone ?? "",
     email: vendor.email ?? "",
-    city: vendor.city ?? "",
-    vendorId: vendor.id,
-    vendorTypes: [SPECIALIZATION_LABEL[vendor.specialization]].filter(Boolean),
-    status: VENDOR_STATUS[vendor.status]?.label ?? VENDOR_STATUS_OPTIONS[0],
+    address: vendor.address ?? "",
+    categories: (vendor.categories_supplied ?? []).join(", "),
+    expected_delivery_days: vendor.expected_delivery_days ?? "",
+    payment_terms: vendor.payment_terms ?? "",
+    notes: vendor.notes ?? "",
   };
 }
 
-// The list stores one specialization per vendor while the form offers both as
-// checkboxes, so the single value is widened into the array the group expects.
-const SPECIALIZATION_LABEL = { printing: "Printing", binding: "Binding" };
+function toPayload(values) {
+  return {
+    company_name: values.company_name.trim(),
+    vendor_name: values.vendor_name.trim(),
+    gst_number: values.gst_number.trim(),
+    contact_person: values.contact_person.trim(),
+    phone: values.phone.trim(),
+    email: values.email.trim(),
+    address: values.address.trim(),
+    categories_supplied: values.categories
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean),
+    expected_delivery_days: values.expected_delivery_days === "" ? null : Number(values.expected_delivery_days),
+    payment_terms: values.payment_terms.trim(),
+    notes: values.notes.trim(),
+  };
+}
 
-export default function VendorFormDialog({
-  mode = "add",
-  vendor,
-  open,
-  onClose,
-  onSave,
-}) {
+export default function VendorFormDialog({ mode = "add", vendor, open, onClose, onSaved }) {
   const [values, setValues] = useState(() => seed(mode, vendor));
-  const isEdit = mode === "edit";
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const set = (key) => (e) =>
-    setValues((v) => ({ ...v, [key]: e.target.value }));
+  const set = (key) => (e) => setValues((v) => ({ ...v, [key]: e.target.value }));
+
+  async function handleSave() {
+    if (!values.company_name.trim() || !values.vendor_name.trim() || !values.gst_number.trim()) {
+      setError("Company name, vendor name and GSTIN are required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSaved(toPayload(values));
+    } catch (err) {
+      setError(err.message);
+      setSaving(false);
+    }
+  }
 
   return (
     <Modal
@@ -90,103 +106,85 @@ export default function VendorFormDialog({
       showCloseButton
       footer={
         <>
-          <Button
-            variant="primary"
-            size="lg"
-            className="flex-1"
-            onClick={() => onSave?.(mode, values)}
-          >
-            {SAVE_LABELS[mode]}
+          <Button variant="primary" size="lg" className="flex-1" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : SAVE_LABELS[mode]}
           </Button>
-          <Button
-            variant="secondary"
-            size="lg"
-            className="flex-1"
-            onClick={onClose}
-          >
+          <Button variant="secondary" size="lg" className="flex-1" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
         </>
       }
     >
-      <div className="flex flex-col gap-2.5">
-        <div className="flex gap-6">
+      <fieldset disabled={saving} className="contents">
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-6">
+            <TextField
+              label="Company Name"
+              className="flex-1"
+              value={values.company_name}
+              onChange={set("company_name")}
+            />
+            <TextField
+              label="Vendor Name"
+              className="flex-1"
+              value={values.vendor_name}
+              onChange={set("vendor_name")}
+            />
+          </div>
+
+          <div className="flex gap-6">
+            <TextField
+              label="GSTIN"
+              className="flex-1"
+              placeholder="22AAAAA0000A1Z5"
+              value={values.gst_number}
+              onChange={set("gst_number")}
+            />
+            <TextField
+              label="Contact Person"
+              className="flex-1"
+              value={values.contact_person}
+              onChange={set("contact_person")}
+            />
+          </div>
+
+          <div className="flex gap-6">
+            <TextField label="Phone" type="tel" className="flex-1" value={values.phone} onChange={set("phone")} />
+            <TextField label="Email" type="email" className="flex-1" value={values.email} onChange={set("email")} />
+          </div>
+
+          <TextField label="Address" value={values.address} onChange={set("address")} />
+
+          <div className="flex gap-6">
+            <TextField
+              label="Categories Supplied"
+              className="flex-1"
+              placeholder="Fiction, Engineering"
+              value={values.categories}
+              onChange={set("categories")}
+            />
+            <TextField
+              label="Expected Delivery (days)"
+              type="number"
+              min="0"
+              className="flex-1"
+              value={values.expected_delivery_days}
+              onChange={set("expected_delivery_days")}
+            />
+          </div>
+
           <TextField
-            label="Business Name"
-            className="flex-1"
-            value={values.businessName}
-            onChange={set("businessName")}
+            label="Payment Terms"
+            placeholder="Net 30"
+            value={values.payment_terms}
+            onChange={set("payment_terms")}
           />
-          <TextField
-            label="Contact Name"
-            className="flex-1"
-            value={values.contactName}
-            onChange={set("contactName")}
-          />
+
+          <Textarea label="Notes" value={values.notes} onChange={set("notes")} />
+
+          {error && <Alert tone="error">{error}</Alert>}
         </div>
-
-        <div className="flex gap-6">
-          <TextField
-            label="Phone"
-            type="tel"
-            className="flex-1"
-            action="Verify"
-            actionDisabled={isEdit}
-            value={values.phone}
-            onChange={set("phone")}
-          />
-          <TextField
-            label="Email"
-            type="email"
-            className="flex-1"
-            action="Verify"
-            actionDisabled={isEdit}
-            value={values.email}
-            onChange={set("email")}
-          />
-        </div>
-
-        <div className="flex gap-6">
-          <SelectField
-            label="City"
-            className="flex-1"
-            options={VENDOR_CITIES}
-            value={values.city}
-            onChange={set("city")}
-          />
-          <TextField
-            label="Vendor ID"
-            className="flex-1"
-            action="Auto-generate"
-            actionDisabled={isEdit}
-            value={values.vendorId}
-            onChange={set("vendorId")}
-            onAction={() =>
-              setValues((v) => ({
-                ...v,
-                vendorId: `VN-${Math.floor(1000 + Math.random() * 9000)}`,
-              }))
-            }
-          />
-        </div>
-
-        <CheckboxGroup
-          label="Vendor Type"
-          name="vendorType"
-          options={VENDOR_TYPES}
-          value={values.vendorTypes}
-          onChange={(vendorTypes) => setValues((v) => ({ ...v, vendorTypes }))}
-        />
-
-        {isEdit && (
-          <SelectField
-            label="Status"
-            options={VENDOR_STATUS_OPTIONS}
-            value={values.status}
-            onChange={set("status")}
-          />
-        )}
-      </div>
+      </fieldset>
     </Modal>
   );
 }

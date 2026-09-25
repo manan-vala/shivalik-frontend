@@ -53,6 +53,10 @@ export const PORTALS = {
           { path: "vendors/binding", label: "Binding Vendors" },
           { path: "vendors/active", label: "Active" },
           { path: "vendors/inactive", label: "Inactive" },
+          // Not in the designed sidebar — the backend's create/dispatch/
+          // receive endpoints (inventory/views/vendor.py) had no screen at
+          // all. Placed under Vendors: same owning team, same backend file.
+          { path: "vendors/purchase-orders", label: "Purchase Orders" },
         ],
       },
       {

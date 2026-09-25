@@ -1,56 +1,81 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Modal from "../ui/Modal.jsx";
 import Badge from "../ui/Badge.jsx";
 import Button from "../ui/Button.jsx";
+import Alert from "../ui/Alert.jsx";
 import Tabs, { TabPanel } from "../ui/Tabs.jsx";
 import { DetailList, PlainTable } from "../ui/PlainTable.jsx";
-import { NumberedPagination } from "../ui/Pagination.jsx";
-import {
-  SPECIALIZATION,
-  VENDOR_ORDER_STATUS,
-  VENDOR_PAYMENT_STATUS,
-} from "../../data/vendors.js";
+import { getVendorPurchaseOrders } from "../../lib/api/inventory.js";
+import { PO_STATUS, poTotal } from "../../data/purchaseOrders.js";
+import { formatINR } from "../../lib/format.js";
 
 /**
  * Vendor detail dialog
- * Figma: GOLDEN / Vendors
- *   Overview (node 1180:48178)
- *   Order    (node 1180:48212)
- *   Payment  (node 1180:48262)
- *   Stock    - see DEVIATION below
  *
- * One dialog, four tabs - the same construction as ClientDetailDialog, whose
- * Overview/Order/Payment frames these mirror almost field for field. What is
- * new here is the Chat button in the header and the fourth tab.
+ * Overview and Purchase Orders, both real: `Vendor`'s own fields, and its
+ * orders from `vendors/{id}/purchase_orders/`.
  *
- * DEVIATION: the tab bar draws four tabs in every frame, but the file only
- * contains three panels - no Stock frame was drawn. Leaving the tab inert
- * would ship a dead control, so Stock renders the vendor's material list, the
- * same shape the Assign Stock dialog's "Current Stock" panel establishes
- * (node 1180:48145). Confirm against the intended design before release.
- *
- * The Order and Payment tabs page through with NumberedPagination rather than
- * the three-button group used under full-page tables - that is what both
- * frames draw.
+ * DEVIATION from the earlier Figma-derived build: that version also drew
+ * Order/Payment/Stock/Chat tabs backed by mock data with no equivalent
+ * concept on this backend — a book-distribution vendor here is a supplier
+ * with purchase orders, not a print shop with a materials ledger, a
+ * payment history or a chat thread. Dropped rather than left fake; Overview
+ * gains the fields the mock never had (categories, terms, blocked state)
+ * and Purchase Orders replaces Order/Payment/Stock with what the backend
+ * actually tracks.
  */
 
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "order", label: "Order" },
-  { id: "payment", label: "Payment" },
-  { id: "stock", label: "Stock" },
+  { id: "orders", label: "Purchase Orders" },
 ];
 
-export default function VendorDetailDialog({ vendor, open, onClose, onChat }) {
-  // Tab and page reset per vendor by remounting - VendorsPage passes
-  // `key={selected?.id}` rather than an effect writing state during render.
+export default function VendorDetailDialog({ vendor, open, onClose, onEdit, onBlockToggle }) {
   const [tab, setTab] = useState("overview");
-  const [page, setPage] = useState(1);
   const titleId = useId();
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
+  const [blockError, setBlockError] = useState("");
+  const [blocking, setBlocking] = useState(false);
+
+  useEffect(() => {
+    if (!vendor || tab !== "orders") return;
+    let active = true;
+
+    async function loadOrders() {
+      setOrdersLoading(true);
+      setOrdersError("");
+      try {
+        const rows = await getVendorPurchaseOrders(vendor.id);
+        if (active) setOrders(rows);
+      } catch (err) {
+        if (active) setOrdersError(err.message);
+      } finally {
+        if (active) setOrdersLoading(false);
+      }
+    }
+
+    loadOrders();
+    return () => {
+      active = false;
+    };
+  }, [vendor, tab]);
 
   if (!vendor) return null;
 
-  const specialization = SPECIALIZATION[vendor.specialization];
+  // Errors stay in the dialog: on success the page closes it, so nothing
+  // here outlives a successful block/unblock.
+  async function toggleBlock() {
+    setBlocking(true);
+    setBlockError("");
+    try {
+      await onBlockToggle(vendor);
+    } catch (err) {
+      setBlockError(err.message);
+      setBlocking(false);
+    }
+  }
 
   return (
     <Modal
@@ -63,29 +88,32 @@ export default function VendorDetailDialog({ vendor, open, onClose, onChat }) {
         <div className="flex flex-col gap-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-5">
-              <h2
-                id={titleId}
-                className="text-display-xs font-medium text-primary"
-              >
-                {vendor.name}
+              <h2 id={titleId} className="text-display-xs font-medium text-primary">
+                {vendor.company_name}
               </h2>
               <div className="flex items-center gap-2">
-                <Badge tone="brand">{specialization.label}</Badge>
-                <span className="text-xs font-medium text-tertiary">
-                  {vendor.city}
-                </span>
+                <Badge tone={vendor.is_blocked ? "alert" : "success"}>
+                  {vendor.is_blocked ? "Blocked" : "Active"}
+                </Badge>
+                <span className="text-xs font-medium text-tertiary">{vendor.vendor_name}</span>
               </div>
             </div>
-            <Button variant="brandSubtle" onClick={() => onChat?.(vendor)}>
-              Chat
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => onEdit?.(vendor)}>
+                Edit
+              </Button>
+              <Button
+                variant={vendor.is_blocked ? "success" : "dangerOutline"}
+                size="sm"
+                onClick={toggleBlock}
+                disabled={blocking}
+              >
+                {vendor.is_blocked ? "Unblock" : "Block"}
+              </Button>
+            </div>
           </div>
-          <Tabs
-            tabs={TABS}
-            value={tab}
-            onChange={setTab}
-            label="Vendor details"
-          />
+          {blockError && <Alert tone="error">{blockError}</Alert>}
+          <Tabs tabs={TABS} value={tab} onChange={setTab} label="Vendor details" />
         </div>
       }
     >
@@ -93,72 +121,55 @@ export default function VendorDetailDialog({ vendor, open, onClose, onChat }) {
         <TabPanel id="overview" active={tab === "overview"}>
           <DetailList
             items={[
-              { label: "Contact", value: vendor.contact },
-              { label: "Phone", value: vendor.phone },
-              { label: "Email", value: vendor.email },
-              { label: "Vendor ID", value: vendor.id },
-              { label: "Registered", value: vendor.registered },
-              { label: "Specialization", value: specialization.label },
+              { label: "Contact Person", value: vendor.contact_person || "—" },
+              { label: "Phone", value: vendor.phone || "—" },
+              { label: "Email", value: vendor.email || "—" },
+              { label: "Address", value: vendor.address || "—" },
+              { label: "GSTIN", value: vendor.gst_number },
+              {
+                label: "Categories Supplied",
+                value: vendor.categories_supplied?.length ? vendor.categories_supplied.join(", ") : "—",
+              },
+              {
+                label: "Expected Delivery",
+                value: vendor.expected_delivery_days ? `${vendor.expected_delivery_days} days` : "—",
+              },
+              { label: "Payment Terms", value: vendor.payment_terms || "—" },
+              { label: "Purchase Orders", value: vendor.purchase_orders_count ?? 0 },
+              {
+                label: "Last Delivery",
+                value: vendor.last_delivery_date
+                  ? new Date(vendor.last_delivery_date).toLocaleDateString()
+                  : "None yet",
+              },
+              { label: "Notes", value: vendor.notes || "—" },
             ]}
           />
         </TabPanel>
 
-        <TabPanel id="order" active={tab === "order"}>
-          <div className="flex flex-col gap-6">
+        <TabPanel id="orders" active={tab === "orders"}>
+          {ordersError ? (
+            <p className="py-6 text-center text-sm text-error-500">{ordersError}</p>
+          ) : (
             <PlainTable
               columns={[
-                { key: "id", label: "Order ID" },
-                { key: "client", label: "Client" },
-                { key: "status", label: "Status" },
+                { key: "id", label: "PO #" },
+                { key: "date", label: "Order Date" },
+                { key: "total", label: "Total", align: "right" },
+                { key: "status", label: "Status", align: "right" },
               ]}
-              rows={vendor.orders.map((order) => {
-                const s = VENDOR_ORDER_STATUS[order.status];
+              rows={orders.map((order) => {
+                const status = PO_STATUS[order.status] ?? PO_STATUS.DRAFT;
                 return {
-                  id: order.id,
-                  client: order.client,
-                  status: <Badge tone={s.tone}>{s.label}</Badge>,
+                  id: `PO-${order.id}`,
+                  date: order.order_date || "—",
+                  total: formatINR(poTotal(order)),
+                  status: <Badge tone={status.tone}>{status.label}</Badge>,
                 };
               })}
-              emptyMessage="No orders yet."
+              emptyMessage={ordersLoading ? "Loading purchase orders..." : "No purchase orders yet."}
             />
-            <NumberedPagination page={page} total={10} onChange={setPage} />
-          </div>
-        </TabPanel>
-
-        <TabPanel id="payment" active={tab === "payment"}>
-          <div className="flex flex-col gap-6">
-            <PlainTable
-              columns={[
-                { key: "date", label: "Date" },
-                { key: "amount", label: "Amount" },
-                { key: "status", label: "Status" },
-              ]}
-              rows={vendor.payments.map((payment) => {
-                const s = VENDOR_PAYMENT_STATUS[payment.status];
-                return {
-                  date: payment.date,
-                  amount: payment.amount,
-                  status: <Badge tone={s.tone}>{s.label}</Badge>,
-                };
-              })}
-              emptyMessage="No payments recorded."
-            />
-            <NumberedPagination page={page} total={10} onChange={setPage} />
-          </div>
-        </TabPanel>
-
-        <TabPanel id="stock" active={tab === "stock"}>
-          <PlainTable
-            columns={[
-              { key: "material", label: "Material" },
-              { key: "quantity", label: "Quantity" },
-            ]}
-            rows={vendor.stock.map((item) => ({
-              material: item.material,
-              quantity: item.quantity,
-            }))}
-            emptyMessage="No stock assigned."
-          />
+          )}
         </TabPanel>
       </div>
     </Modal>
