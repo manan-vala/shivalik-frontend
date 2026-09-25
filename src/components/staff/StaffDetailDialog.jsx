@@ -27,7 +27,19 @@ const TABS = [
   { id: "salary", label: "Salary" },
 ];
 
-export default function StaffDetailDialog({ staff, open, onClose, onEdit, onApprove, onReject }) {
+/**
+ * `approverName` is resolved by the parent from its own staff list:
+ * `approved_by` on the wire is a bare employee id.
+ */
+export default function StaffDetailDialog({
+  staff,
+  approverName,
+  open,
+  onClose,
+  onEdit,
+  onApprove,
+  onReject,
+}) {
   const [tab, setTab] = useState("overview");
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
@@ -103,6 +115,15 @@ export default function StaffDetailDialog({ staff, open, onClose, onEdit, onAppr
                 { label: "Department", value: staff.department || "—" },
                 { label: "Address", value: staff.address || "—" },
                 { label: "Requested Role", value: staff.requested_role ? roleLabel(staff.requested_role) : "—" },
+                ...(staff.status === "Approved"
+                  ? [
+                      { label: "Approved By", value: approverName || "—" },
+                      {
+                        label: "Approved At",
+                        value: staff.approved_at ? new Date(staff.approved_at).toLocaleString() : "—",
+                      },
+                    ]
+                  : []),
                 ...(staff.status === "Rejected"
                   ? [{ label: "Rejection Reason", value: staff.rejection_reason || "—" }]
                   : []),
@@ -148,11 +169,6 @@ export default function StaffDetailDialog({ staff, open, onClose, onEdit, onAppr
           <DetailList
             items={[
               { label: "Monthly Salary", value: staff.salary ? formatINR(staff.salary) : "Not set" },
-              { label: "Approved By", value: staff.approved_by ?? "—" },
-              {
-                label: "Approved At",
-                value: staff.approved_at ? new Date(staff.approved_at).toLocaleString() : "—",
-              },
             ]}
           />
         </TabPanel>

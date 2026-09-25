@@ -126,6 +126,11 @@ export function Textarea({
   );
 }
 
+/**
+ * `options` is either strings (value and label are the same) or
+ * `{ value, label }` — the latter for picking a record by id when its
+ * display name isn't unique (two vendors can share a company name).
+ */
 export function SelectField({
   label,
   options = [],
@@ -157,11 +162,15 @@ export function SelectField({
           <option value="" disabled>
             {placeholder}
           </option>
-          {options.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
+          {options.map((opt) => {
+            const { value: optValue, label: optLabel } =
+              typeof opt === "object" ? opt : { value: opt, label: opt };
+            return (
+              <option key={optValue} value={optValue}>
+                {optLabel}
+              </option>
+            );
+          })}
         </select>
         <Icon name="chevron-down" size="md" className="shrink-0 text-tertiary" />
       </div>

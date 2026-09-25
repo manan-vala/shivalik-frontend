@@ -104,7 +104,15 @@ export default function PurchaseOrdersPage() {
     const id = receiving?.id;
     await receivePurchaseOrder(id, lines);
     setReceiving(null);
-    await refreshSelected(id);
+    // The receipt is booked at this point. Reopen the order with its new
+    // status, but if that read fails, fall back to refreshing the list —
+    // letting it throw would report an error in the receive dialog, which
+    // has already closed, for a receipt that succeeded.
+    try {
+      await refreshSelected(id);
+    } catch {
+      reload();
+    }
   }
 
   return (
@@ -247,6 +255,7 @@ export default function PurchaseOrdersPage() {
         key={`receive-${receiving?.id}`}
         order={receiving}
         racks={racks}
+        books={books}
         open={Boolean(receiving)}
         onClose={() => setReceiving(null)}
         onReceived={handleReceived}

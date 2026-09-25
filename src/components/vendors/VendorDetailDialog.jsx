@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import Modal from "../ui/Modal.jsx";
 import Badge from "../ui/Badge.jsx";
 import Button from "../ui/Button.jsx";
+import Alert from "../ui/Alert.jsx";
 import Tabs, { TabPanel } from "../ui/Tabs.jsx";
 import { DetailList, PlainTable } from "../ui/PlainTable.jsx";
 import { getVendorPurchaseOrders } from "../../lib/api/inventory.js";
@@ -35,6 +36,8 @@ export default function VendorDetailDialog({ vendor, open, onClose, onEdit, onBl
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [blockError, setBlockError] = useState("");
+  const [blocking, setBlocking] = useState(false);
 
   useEffect(() => {
     if (!vendor || tab !== "orders") return;
@@ -60,6 +63,19 @@ export default function VendorDetailDialog({ vendor, open, onClose, onEdit, onBl
   }, [vendor, tab]);
 
   if (!vendor) return null;
+
+  // Errors stay in the dialog: on success the page closes it, so nothing
+  // here outlives a successful block/unblock.
+  async function toggleBlock() {
+    setBlocking(true);
+    setBlockError("");
+    try {
+      await onBlockToggle(vendor);
+    } catch (err) {
+      setBlockError(err.message);
+      setBlocking(false);
+    }
+  }
 
   return (
     <Modal
@@ -89,12 +105,14 @@ export default function VendorDetailDialog({ vendor, open, onClose, onEdit, onBl
               <Button
                 variant={vendor.is_blocked ? "success" : "dangerOutline"}
                 size="sm"
-                onClick={() => onBlockToggle?.(vendor)}
+                onClick={toggleBlock}
+                disabled={blocking}
               >
                 {vendor.is_blocked ? "Unblock" : "Block"}
               </Button>
             </div>
           </div>
+          {blockError && <Alert tone="error">{blockError}</Alert>}
           <Tabs tabs={TABS} value={tab} onChange={setTab} label="Vendor details" />
         </div>
       }

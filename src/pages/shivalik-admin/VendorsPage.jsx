@@ -48,7 +48,6 @@ export default function VendorsPage({ filter = "all" }) {
   // null | { mode: "add" } | { mode: "edit", vendor }
   const [form, setForm] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [actionError, setActionError] = useState("");
 
   const rows = useMemo(() => {
     let list = vendors;
@@ -88,16 +87,14 @@ export default function VendorsPage({ filter = "all" }) {
     reload();
   }
 
+  // Throws on failure: the detail dialog shows the error itself. A page-level
+  // alert would sit behind the modal's backdrop, and the click would appear
+  // to do nothing.
   async function handleBlockToggle(vendor) {
-    setActionError("");
-    try {
-      if (vendor.is_blocked) await unblockVendor(vendor.id);
-      else await blockVendor(vendor.id);
-      setSelected(null);
-      reload();
-    } catch (err) {
-      setActionError(err.message);
-    }
+    if (vendor.is_blocked) await unblockVendor(vendor.id);
+    else await blockVendor(vendor.id);
+    setSelected(null);
+    reload();
   }
 
   return (
@@ -112,7 +109,6 @@ export default function VendorsPage({ filter = "all" }) {
       />
 
       {error && <Alert tone="error">Could not load vendors: {error.message}</Alert>}
-      {actionError && <Alert tone="error">{actionError}</Alert>}
 
       <TableCard>
         <TableToolbar className="flex items-center gap-4">

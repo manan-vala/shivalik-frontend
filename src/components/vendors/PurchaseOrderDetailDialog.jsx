@@ -31,6 +31,9 @@ export default function PurchaseOrderDetailDialog({
   const titleId = useId();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // CANCELLED is terminal — the backend allows no transition out of it —
+  // so cancelling takes a second, explicit click.
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   if (!order) return null;
   const status = PO_STATUS[order.status] ?? PO_STATUS.DRAFT;
@@ -102,37 +105,60 @@ export default function PurchaseOrderDetailDialog({
 
         {error && <Alert tone="error">{error}</Alert>}
 
-        <div className="flex flex-wrap gap-3">
-          {(order.status === "DRAFT" || order.status === "PLACED") && (
-            <>
-              <Button variant="secondary" onClick={() => onEdit(order)} disabled={busy}>
-                Edit
+        {confirmingCancel ? (
+          <div className="flex flex-col gap-3 rounded-md border border-border-default bg-subtle p-4">
+            <p className="text-sm font-medium text-primary">
+              Cancel PO-{order.id}? A cancelled order can't be reopened.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="dangerOutline"
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    await onCancel(order);
+                    setConfirmingCancel(false);
+                  })
+                }
+              >
+                Confirm Cancellation
               </Button>
-              {order.status === "DRAFT" && (
-                <Button variant="brandSubtle" onClick={() => run(() => onPlace(order))} disabled={busy}>
-                  Place Order
+              <Button variant="secondary" onClick={() => setConfirmingCancel(false)} disabled={busy}>
+                Keep Order
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {(order.status === "DRAFT" || order.status === "PLACED") && (
+              <>
+                <Button variant="secondary" onClick={() => onEdit(order)} disabled={busy}>
+                  Edit
                 </Button>
-              )}
-              <Button variant="primary" onClick={() => run(() => onDispatch(order))} disabled={busy}>
-                Dispatch
-              </Button>
-              <Button variant="dangerOutline" onClick={() => run(() => onCancel(order))} disabled={busy}>
-                Cancel Order
-              </Button>
-            </>
-          )}
+                {order.status === "DRAFT" && (
+                  <Button variant="brandSubtle" onClick={() => run(() => onPlace(order))} disabled={busy}>
+                    Place Order
+                  </Button>
+                )}
+                <Button variant="primary" onClick={() => run(() => onDispatch(order))} disabled={busy}>
+                  Dispatch
+                </Button>
+              </>
+            )}
 
-          {order.status === "DISPATCHED" && (
-            <>
+            {order.status === "DISPATCHED" && (
               <Button variant="primary" onClick={() => onReceive(order)} disabled={busy}>
                 Receive Stock
               </Button>
-              <Button variant="dangerOutline" onClick={() => run(() => onCancel(order))} disabled={busy}>
+            )}
+
+            {["DRAFT", "PLACED", "DISPATCHED"].includes(order.status) && (
+              <Button variant="dangerOutline" onClick={() => setConfirmingCancel(true)} disabled={busy}>
                 Cancel Order
               </Button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

@@ -56,6 +56,16 @@ export default function PurchaseOrderFormDialog({
 
   const booksById = new Map(books.map((b) => [String(b.id), b]));
 
+  // By id, labelled with the GSTIN: `company_name` isn't unique on the
+  // backend (only `gst_number` is), so picking by name could silently put
+  // the order on the wrong vendor. Blocked vendors are left out — the stock
+  // engine refuses to receive from one, so a new order for them could be
+  // created and dispatched but never received. In edit mode the order's
+  // own vendor stays listed even if it has since been blocked.
+  const vendorOptions = vendors
+    .filter((v) => !v.is_blocked || String(v.id) === String(order?.vendor))
+    .map((v) => ({ value: String(v.id), label: `${v.company_name} (${v.gst_number})` }));
+
   function updateLine(key, patch) {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   }
@@ -140,12 +150,9 @@ export default function PurchaseOrderFormDialog({
             <SelectField
               label="Vendor"
               className="flex-1"
-              options={vendors.map((v) => v.company_name)}
-              value={vendors.find((v) => String(v.id) === vendorId)?.company_name ?? ""}
-              onChange={(e) => {
-                const chosen = vendors.find((v) => v.company_name === e.target.value);
-                setVendorId(chosen ? String(chosen.id) : "");
-              }}
+              options={vendorOptions}
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
             />
             {mode === "add" && (
               <SelectField

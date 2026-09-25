@@ -10,27 +10,35 @@ import { rackLabel } from "../../lib/api/inventory.js";
  *
  * One row per line still outstanding (`quantity_ordered - quantity_received
  * > 0`), each defaulting to receiving the rest of it onto its book's
- * default rack when one is set. A line left at 0 is left out of the
- * request entirely — the backend accepts a partial receipt and leaves the
- * order DISPATCHED until every line is full — so "receive nothing on this
- * line yet" and "receive it all" are both one dialog.
+ * default rack when one is set (and still active). A line left at 0 is left
+ * out of the request entirely — the backend accepts a partial receipt and
+ * leaves the order DISPATCHED until every line is full — so "receive nothing
+ * on this line yet" and "receive it all" are both one dialog.
+ *
+ * Only active racks are offered, the same rule IN Entry follows.
  */
-export default function PurchaseOrderReceiveDialog({ order, racks, open, onClose, onReceived }) {
+export default function PurchaseOrderReceiveDialog({ order, racks, books, open, onClose, onReceived }) {
   const outstanding = (order?.lines ?? []).filter(
     (line) => line.quantity_ordered - line.quantity_received > 0
   );
+  const activeRacks = racks.filter((r) => r.is_active);
 
-  const [values, setValues] = useState(() =>
-    Object.fromEntries(
-      outstanding.map((line) => [
-        line.id,
-        {
-          quantity: String(line.quantity_ordered - line.quantity_received),
-          rack: "",
-        },
-      ])
-    )
-  );
+  const [values, setValues] = useState(() => {
+    const activeIds = new Set(activeRacks.map((r) => r.id));
+    const defaultRackOf = new Map(books.map((b) => [b.id, b.default_rack]));
+    return Object.fromEntries(
+      outstanding.map((line) => {
+        const rack = defaultRackOf.get(line.book);
+        return [
+          line.id,
+          {
+            quantity: String(line.quantity_ordered - line.quantity_received),
+            rack: rack && activeIds.has(rack) ? String(rack) : "",
+          },
+        ];
+      })
+    );
+  });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -141,7 +149,7 @@ export default function PurchaseOrderReceiveDialog({ order, racks, open, onClose
                           onChange={(e) => update(line.id, { rack: e.target.value })}
                         >
                           <option value="">Select rack...</option>
-                          {racks.map((r) => (
+                          {activeRacks.map((r) => (
                             <option key={r.id} value={r.id}>
                               {rackLabel(r)}
                             </option>

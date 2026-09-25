@@ -186,6 +186,7 @@ export default function StaffPage() {
       <StaffDetailDialog
         key={selected?.id}
         staff={selected}
+        approverName={staff.find((s) => s.id === selected?.approved_by)?.name}
         open={viewOpen}
         onClose={() => setViewOpen(false)}
         onEdit={editFromDetail}
