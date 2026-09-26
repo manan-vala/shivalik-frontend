@@ -1,0 +1,19 @@
+version: "3.3"
+
+services:
+  shivalik_inventory_frontend_prod:
+    image: shivalik_inventory_frontend_prod
+    container_name: shivalik_inventory_frontend_prod
+    restart: always
+    build:
+      context: .
+    ports:
+      - "5274:3000"
+    env_file:
+      - .env
+    networks:
+      - frontend_default
+
+networks:
+  frontend_default:
+    external: true
