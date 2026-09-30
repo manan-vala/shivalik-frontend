@@ -20,6 +20,13 @@ export const PYTHON = process.env.E2E_PYTHON || "python";
 export const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT || 8010);
 export const FRONTEND_PORT = Number(process.env.E2E_FRONTEND_PORT || 5180);
 export const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
+
+/**
+ * Django's `/api/v1` as the app reaches it through the Vite proxy, which
+ * mounts Django at `/api` the way production nginx mounts it at
+ * `/shivalik-inventory/api` (vite.config.js, src/lib/api/client.js).
+ */
+export const API_PREFIX = "/api/api/v1";
 export const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`;
 
 /** Postgres database (or SQLite file) the suite flushes and reseeds on every run. */

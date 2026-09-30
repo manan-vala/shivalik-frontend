@@ -1,10 +1,17 @@
 /**
  * API client — the one way the frontend talks to Django.
  * -----------------------------------------------------------------------------
- * Every request goes to the relative `/api/v1` prefix. In development Vite
- * proxies it to Django (vite.config.js, `API_PROXY_TARGET`), so the browser
- * only ever sees one origin: no CORS, and no second base URL to drift out of
- * sync with this one.
+ * Every request goes to a same-origin path under the app's base path, so the
+ * browser only ever sees one origin: no CORS, and no second host name to
+ * drift out of sync.
+ *
+ * Django's own root is mounted at `<base>api/` — by nginx in production,
+ * which strips that prefix before proxying, and by Vite's dev/preview proxy
+ * the same way (vite.config.js). Django's routes themselves start with
+ * `api/v1/`, hence the doubled segment:
+ *
+ *   production   /shivalik-inventory/api/api/v1/…  ->  Django /api/v1/…
+ *   dev server   /api/api/v1/…                     ->  Django /api/v1/…
  *
  * Auth: the access token rides on every request. simplejwt's access tokens
  * live five minutes, so a 401 is normally just an expired token — the client
@@ -12,7 +19,12 @@
  * when that fails too is the session over, and the user is sent to /login.
  */
 
-const BASE_URL = "/api/v1";
+/** Where Django's root is mounted — keep in step with vite.config.js. */
+const BACKEND_ROOT = `${import.meta.env.BASE_URL}api`;
+const BASE_URL = `${BACKEND_ROOT}/api/v1`;
+
+/** The sign-in screen as a real URL, for redirects outside the router. */
+const LOGIN_URL = `${import.meta.env.BASE_URL}login`;
 
 export const TOKEN_STORAGE_KEY = "shivalik.dev.token";
 export const REFRESH_TOKEN_STORAGE_KEY = "shivalik.dev.refresh-token";
@@ -66,8 +78,8 @@ export function clearSession() {
 
 function endSession() {
   clearSession();
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
+  if (window.location.pathname !== LOGIN_URL) {
+    window.location.assign(LOGIN_URL);
   }
 }
 
@@ -170,6 +182,22 @@ export async function apiClient(endpoint, { params, ...config } = {}) {
 }
 
 /**
+ * The endpoint (relative to `BASE_URL`) a DRF `next` link points at.
+ *
+ * Django builds `next` from the request as *it* saw it: behind nginx that is
+ * `http://swc.iitg.ac.in/api/v1/inventory/racks/?page=2` — plain http, and
+ * without the `/shivalik-inventory/api` prefix nginx stripped. Neither is
+ * reachable from the browser. Only the part after Django's own `/api/v1` is
+ * meaningful, whatever host, scheme or prefix surrounds it.
+ */
+function nextEndpoint(next) {
+  const url = new URL(next, window.location.origin);
+  const match = url.pathname.match(/\/api\/v1(\/.*)$/);
+  if (!match) throw new Error(`Unexpected pagination link: ${next}`);
+  return match[1] + url.search;
+}
+
+/**
  * Every item of a paginated list, following `next` until it runs out.
  *
  * DRF pages at 25. A screen that takes only the first page silently loses
@@ -185,9 +213,6 @@ export async function fetchAll(endpoint, { params } = {}) {
     items.push(...(page?.results ?? []));
     if (!page?.next) return items;
 
-    // `next` is absolute and names Django's own host, which the browser
-    // cannot reach through the proxy. Keep the path and query only.
-    const next = new URL(page.next);
-    page = await apiClient(next.pathname.replace(BASE_URL, "") + next.search);
+    page = await apiClient(nextEndpoint(page.next));
   }
 }

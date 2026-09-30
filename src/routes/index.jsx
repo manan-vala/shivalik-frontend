@@ -114,11 +114,17 @@ function portalRoute(portal) {
   };
 }
 
-export const router = createBrowserRouter([
-  { path: "/", element: <RootRedirect /> },
-  { path: "/login", element: <SignInPage /> },
-  ...PORTAL_LIST.map(portalRoute),
-  { path: "*", element: <Navigate to="/" replace /> },
-]);
+export const router = createBrowserRouter(
+  [
+    { path: "/", element: <RootRedirect /> },
+    { path: "/login", element: <SignInPage /> },
+    ...PORTAL_LIST.map(portalRoute),
+    { path: "*", element: <Navigate to="/" replace /> },
+  ],
+  // The app's base path from vite.config.js ("/shivalik-inventory/" in a
+  // production build, "/" on the dev server). Every path above, and every
+  // navigate()/<Navigate>, is relative to it.
+  { basename: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" }
+);
 
 export default router;

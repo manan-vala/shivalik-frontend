@@ -13,7 +13,7 @@ import {
  *
  * Playwright starts both servers itself — Django on :8010 against a
  * throwaway `shivalik_e2e` database that is flushed and reseeded every run,
- * and Vite on :5180 proxying `/api` to it. Needs the backend checked out
+ * and Vite on :5180 proxying `/api` to it (prefix stripped, as nginx does). Needs the backend checked out
  * next to this repo (or E2E_BACKEND_DIR) and its database reachable.
  * See e2e/README.md.
  */
