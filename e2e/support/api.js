@@ -1,12 +1,12 @@
 import { expect } from "@playwright/test";
-import { ADMIN } from "./env.js";
+import { ADMIN, API_PREFIX } from "./env.js";
 
 /**
  * Reads the backend directly, as the e2e admin, to check what a screen
  * claimed to have saved. Goes through the Vite proxy like the app does.
  */
 export async function adminApi(request) {
-  const login = await request.post("/api/v1/auth/login/", {
+  const login = await request.post(`${API_PREFIX}/auth/login/`, {
     data: { email: ADMIN.email, password: ADMIN.password },
   });
   expect(login.ok()).toBeTruthy();
@@ -14,7 +14,7 @@ export async function adminApi(request) {
 
   return {
     async get(path) {
-      const response = await request.get(`/api/v1${path}`, {
+      const response = await request.get(`${API_PREFIX}${path}`, {
         headers: { Authorization: `Bearer ${access}` },
       });
       expect(response.ok(), `GET ${path} -> ${response.status()}`).toBeTruthy();

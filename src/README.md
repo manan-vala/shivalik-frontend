@@ -17,6 +17,21 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
+### Base path and API routing
+
+Production serves the app under **`/shivalik-inventory/`**
+(https://swc.iitg.ac.in/shivalik-inventory/). `npm run build` and
+`npm run preview` use that base path; `npm run dev` stays at `/`.
+`BASE_PATH` overrides both (vite.config.js).
+
+nginx mounts Django's root at `/shivalik-inventory/api/` and strips that
+prefix, so Django's own `/api/v1/…` is reached at
+`/shivalik-inventory/api/api/v1/…`. Vite's dev and preview proxies mount
+Django the same way at `<base>api`, so `src/lib/api/client.js` builds the
+same paths locally as in production. `npm run build && npm run preview`
+(with Django on `API_PROXY_TARGET`) is a faithful local copy of the
+deployment.
+
 You land on `/login` - a dev role switcher standing in for real sign-in. Pick a
 portal to enter it. Only Shivalik Admin has built screens so far (Dashboard,
 Clients, Finance, Staff - see "Built screens" below); everything else renders

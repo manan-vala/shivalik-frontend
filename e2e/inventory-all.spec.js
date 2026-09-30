@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { row } from "./support/api.js";
+import { API_PREFIX } from "./support/env.js";
 
 test("lists every catalog title with stock summed across racks", async ({ page }) => {
   const apiRequests = [];
   page.on("request", (r) => {
-    if (new URL(r.url()).pathname.startsWith("/api/v1/")) apiRequests.push(r);
+    if (new URL(r.url()).pathname.startsWith(`${API_PREFIX}/`)) apiRequests.push(r);
   });
 
   await page.goto("/admin/inventory");
