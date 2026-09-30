@@ -1,0 +1,32 @@
+# Keeps the build context to source only. The Dockerfile runs `npm ci` and
+# then `COPY . .`, so anything not listed here lands on top of what `npm ci`
+# just installed.
+
+# Dependencies: the image installs its own. A host `node_modules` copied over
+# them carries the host's native binaries (glibc), which the build on
+# node:*-alpine (musl) cannot load.
+node_modules/
+
+# Build output: the image runs `npm run build` itself.
+dist/
+dist-ssr/
+
+# Version control and editor clutter
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+
+# Local-only Vite env overrides. `.env` / `.env.production` stay in: Vite
+# reads them at build time, and they hold only public build settings.
+*.local
+
+# Playwright output
+test-results/
+playwright-report/
+blob-report/
+e2e/.auth/
+
+# Logs
+*.log
